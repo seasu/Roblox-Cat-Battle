@@ -12,9 +12,33 @@ local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
 local useSkillEvent = remoteEvents:WaitForChild("UseSkill") :: RemoteEvent
 
 -- 目前技能列映射：slot -> skillId（由 GameClient 在初始化後設置）
-CombatClient.skillSlots: { string } = {}
+CombatClient.skillSlots = {} :: { string }
 
 -- 快捷鍵對應（第 2–6 槽）
+
+local function playOneShotSound(soundId: string, position: Vector3?, volume: number?)
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = volume or 0.8
+	sound.RollOffMaxDistance = 80
+	if position then
+		local part = Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.Transparency = 1
+		part.Size = Vector3.new(0.1, 0.1, 0.1)
+		part.Position = position
+		part.Parent = workspace
+		sound.Parent = part
+		sound:Play()
+		game:GetService("Debris"):AddItem(part, 2)
+	else
+		sound.Parent = workspace
+		sound:Play()
+		game:GetService("Debris"):AddItem(sound, 2)
+	end
+end
+
 local KEY_BINDINGS: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Q] = 2,
 	[Enum.KeyCode.E] = 3,
@@ -50,6 +74,7 @@ function CombatClient.attemptBasicAttack()
 	local instanceId, hitPos = getMouseTarget()
 	if instanceId then
 		useSkillEvent:FireServer("BasicSwipe", instanceId)
+		playOneShotSound("rbxassetid://12222225", hitPos, 0.6)
 		if hitPos then
 			CombatClient.showDamageNumber(hitPos, "?", false)
 		end
@@ -89,6 +114,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
+	playOneShotSound("rbxassetid://5419098675", position, isCrit and 1 or 0.8)
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,

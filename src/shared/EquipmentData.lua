@@ -9,7 +9,7 @@ local function zeroStats(): CatStats
 	return { maxHp = 0, attack = 0, defense = 0, speed = 0, critChance = 0 }
 end
 
-EquipmentData.items: { [string]: EquipmentItem } = {
+local items: { [string]: EquipmentItem } = {
 
 	-- 項圈槽
 	collarBasic = {
@@ -113,6 +113,8 @@ EquipmentData.items: { [string]: EquipmentItem } = {
 		price = 320,
 	},
 }
+
+EquipmentData.items = items
 
 function EquipmentData.getItemById(itemId: string): EquipmentItem?
 	return EquipmentData.items[itemId]
