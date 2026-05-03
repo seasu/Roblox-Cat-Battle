@@ -10,6 +10,7 @@ local ShopManager = require(script.Parent.ShopManager)
 local EquipmentManager = require(script.Parent.EquipmentManager)
 local SkillManager = require(script.Parent.SkillManager)
 local PvPManager = require(script.Parent.PvPManager)
+local CatAppearance = require(script.Parent.CatAppearance)
 
 -- 跨模組依賴注入
 ExperienceManager._catManager = CatManager
@@ -80,6 +81,13 @@ Players.PlayerAdded:Connect(function(player: Player)
 	SkillManager.initInnateSkills(player)
 	CatManager.initPlayer(player)
 
+	-- 角色外觀載入完成後套用貓咪顏色 + 貓耳 + 尾巴
+	player.CharacterAppearanceLoaded:Connect(function(character)
+		local pData = DataStore.getData(player)
+		local catId = pData and pData.activeCatId or "whiteCat"
+		CatAppearance.apply(player, catId)
+	end)
+
 	-- 通知客戶端資料已就緒
 	getEvent("LoadDataResponse"):FireClient(player, data)
 end)
@@ -112,6 +120,7 @@ end)
 
 getEvent("SelectCat").OnServerEvent:Connect(function(player: Player, catId: string)
 	CatManager.handleSelectCat(player, catId)
+	CatAppearance.apply(player, catId)
 end)
 
 getEvent("EquipItem").OnServerEvent:Connect(function(player: Player, itemId: string)
