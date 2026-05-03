@@ -235,6 +235,15 @@ function NPCManager.getNPCsInRadius(center: Vector3, radius: number): { string }
 	return result
 end
 
+
+function NPCManager.getActiveNPCCount(): number
+	local count = 0
+	for _ in pairs(activeNPCs) do
+		count += 1
+	end
+	return count
+end
+
 function NPCManager.getNearbyNPCs(originInstanceId: string, radius: number, maxCount: number): { string }
 	local origin = activeNPCs[originInstanceId]
 	if not origin then return {} end
