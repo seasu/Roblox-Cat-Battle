@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CatData = require(ReplicatedStorage.Shared.CatData)
 local DataStore = require(script.Parent.DataStore)
+local CatVisualData = require(ReplicatedStorage.Shared.CatVisualData)
 
 local CatManager = {}
 
