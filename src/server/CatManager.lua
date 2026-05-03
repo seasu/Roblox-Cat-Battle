@@ -8,18 +8,28 @@ local CatManager = {}
 local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
 local updateCatEvent = remoteEvents:WaitForChild("UpdateCatAppearance")
 
-local CAT_COLORS = CatVisualData.colors
-local CAT_MARKS = CatVisualData.marks
+local CAT_COLORS: { [string]: Color3 } = {
+	whiteCat = Color3.fromRGB(245, 245, 245),
+	shadowCat = Color3.fromRGB(55, 55, 70),
+	flameCat = Color3.fromRGB(255, 120, 60),
+	frostCat = Color3.fromRGB(170, 225, 255),
+	thunderCat = Color3.fromRGB(255, 235, 120),
+	sakuraCat = Color3.fromRGB(255, 185, 220),
+	orangeCat = Color3.fromRGB(255, 170, 80),
+	calicoCat = Color3.fromRGB(230, 200, 170),
+	tuxedoCat = Color3.fromRGB(40, 40, 40),
+}
+
 
 local function clearCatParts(character: Model)
 	for _, obj in ipairs(character:GetChildren()) do
-		if obj:IsA("BasePart") and (obj.Name == "CatEar_L" or obj.Name == "CatEar_R" or obj.Name == "CatTail" or obj.Name == "CatHeadMask" or string.sub(obj.Name, 1, 8) == "CatMark_") then
+		if obj:IsA("BasePart") and (obj.Name == "CatEar_L" or obj.Name == "CatEar_R" or obj.Name == "CatTail") then
 			obj:Destroy()
 		end
 	end
 end
 
-local function attachCatParts(character: Model, color: Color3, catId: string)
+local function attachCatParts(character: Model, color: Color3)
 	local head = character:FindFirstChild("Head")
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not head or not hrp then return end
@@ -41,19 +51,9 @@ local function attachCatParts(character: Model, color: Color3, catId: string)
 		return p
 	end
 
-	makePart("CatHeadMask", Vector3.new(1.6, 1.4, 1.4), head.CFrame * CFrame.new(0, 0, 0.08))
 	makePart("CatEar_L", Vector3.new(0.35, 0.45, 0.25), head.CFrame * CFrame.new(-0.3, 0.5, -0.1))
 	makePart("CatEar_R", Vector3.new(0.35, 0.45, 0.25), head.CFrame * CFrame.new(0.3, 0.5, -0.1))
 	makePart("CatTail", Vector3.new(0.25, 0.25, 1.4), hrp.CFrame * CFrame.new(0, -0.4, 0.9))
-
-	-- 貓種差異花紋（簡易 baseline）
-	local marks = CAT_MARKS[catId]
-	if marks then
-		for _, mark in ipairs(marks) do
-			makePart(mark.name, mark.size, head.CFrame * CFrame.new(mark.offset)).Color = mark.color
-		end
-	end
-
 end
 
 local function applyBasicCatVisual(player: Player, catId: string)
@@ -72,7 +72,7 @@ local function applyBasicCatVisual(player: Player, catId: string)
 	desc.TorsoColor = color
 	humanoid:ApplyDescription(desc)
 	clearCatParts(character)
-	attachCatParts(character, color, catId)
+	attachCatParts(character, color)
 end
 
 
