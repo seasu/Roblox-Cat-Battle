@@ -1,4 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local NPCData = require(ReplicatedStorage.Shared.NPCData)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -16,6 +18,9 @@ local combatHitEvent = remoteEvents:WaitForChild("CombatHit")
 local activeNPCs: { [string]: ActiveNPC } = {}
 local npcModels: { [string]: Model } = {}
 local idCounter = 0
+local npcHomePositions: { [string]: Vector3 } = {}
+local npcNextAttackAt: { [string]: number } = {}
+local npcWanderTargets: { [string]: Vector3 } = {}
 
 -- 各 NPC 的視覺外觀設定
 local NPC_VISUALS: { [string]: { size: Vector3, color: BrickColor } } = {
@@ -71,6 +76,37 @@ local function createNPCModel(def: any, instanceId: string, spawnPos: Vector3): 
 	body.BottomSurface = Enum.SurfaceType.Smooth
 	body.Parent = model
 	model.PrimaryPart = body
+
+	-- 追加簡易外觀零件（耳朵 / 尾巴 / 頭部）
+	if def.kind == "WildCat" then
+		for _, x in ipairs({-0.8, 0.8}) do
+			local ear = Instance.new("Part")
+			ear.Name = "Ear"
+			ear.Anchored = true
+			ear.Size = Vector3.new(0.8, 0.8, 0.8)
+			ear.BrickColor = body.BrickColor
+			ear.Material = body.Material
+			ear.CFrame = body.CFrame * CFrame.new(x, visual.size.Y / 2 + 0.4, -0.6)
+			ear.Parent = model
+		end
+		local tail = Instance.new("Part")
+		tail.Name = "Tail"
+		tail.Anchored = true
+		tail.Size = Vector3.new(0.6, 0.6, 2.2)
+		tail.BrickColor = body.BrickColor
+		tail.Material = body.Material
+		tail.CFrame = body.CFrame * CFrame.new(0, 0.2, visual.size.Z / 2 + 1)
+		tail.Parent = model
+	elseif def.kind == "WildHuman" then
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Anchored = true
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.new(1.5, 1.5, 1.5)
+		head.BrickColor = BrickColor.new("Medium stone grey")
+		head.CFrame = body.CFrame * CFrame.new(0, visual.size.Y / 2 + 1, 0)
+		head.Parent = model
+	end
 
 	-- InstanceId（供 CombatClient 射線偵測用）
 	local idValue = Instance.new("StringValue")
@@ -142,6 +178,8 @@ function NPCManager.spawnNPC(npcId: string, position: Vector3): ActiveNPC?
 		instanceId = instanceId,
 	}
 	activeNPCs[instanceId] = npc
+	npcHomePositions[instanceId] = spawnPos
+	npcNextAttackAt[instanceId] = 0
 	npcModels[instanceId] = createNPCModel(def, instanceId, spawnPos)
 	return npc
 end
@@ -188,6 +226,9 @@ function NPCManager.handleDeath(instanceId: string, killer: Player)
 
 	local def = npc.definition
 	activeNPCs[instanceId] = nil
+	npcHomePositions[instanceId] = nil
+	npcWanderTargets[instanceId] = nil
+	npcNextAttackAt[instanceId] = nil
 
 	-- 移除 Workspace 中的模型
 	local model = npcModels[instanceId]
@@ -256,5 +297,75 @@ function NPCManager.getNearbyNPCs(originInstanceId: string, radius: number, maxC
 	end
 	return result
 end
+
+
+local MOVE_SPEED_BY_KIND: { [string]: number } = {
+	Doll = 0,
+	WildCat = 14,
+	WildHuman = 11,
+}
+
+local function getNearestPlayer(position: Vector3, maxDistance: number): (Player?, number)
+	local nearest: Player? = nil
+	local nearestDist = maxDistance
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hrp and hum and hum.Health > 0 then
+			local dist = (hrp.Position - position).Magnitude
+			if dist < nearestDist then
+				nearest = player
+				nearestDist = dist
+			end
+		end
+	end
+	return nearest, nearestDist
+end
+
+local function updateNPCBehavior(deltaTime: number)
+	for id, npc in pairs(activeNPCs) do
+		local model = npcModels[id]
+		if not model then continue end
+		local speed = MOVE_SPEED_BY_KIND[npc.definition.kind] or 0
+		local home = npcHomePositions[id] or npc.position
+		local targetPos = home
+		local player, dist = getNearestPlayer(npc.position, 45)
+
+		if player and dist <= 45 then
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				targetPos = hrp.Position
+				if dist <= 5 then
+					local now = os.clock()
+					if now >= (npcNextAttackAt[id] or 0) then
+						npcNextAttackAt[id] = now + 1.2
+						local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+						if hum then hum:TakeDamage(npc.definition.attack) end
+					end
+				end
+			end
+		elseif speed > 0 then
+			local wander = npcWanderTargets[id]
+			if not wander or (wander - npc.position).Magnitude < 3 then
+				wander = home + Vector3.new(math.random(-18, 18), 0, math.random(-18, 18))
+				npcWanderTargets[id] = wander
+			end
+			targetPos = wander
+		end
+
+		if speed > 0 then
+			local toTarget = targetPos - npc.position
+			if toTarget.Magnitude > 0.1 then
+				local step = math.min(toTarget.Magnitude, speed * deltaTime)
+				local dir = toTarget.Unit
+				npc.position = npc.position + dir * step
+				model:PivotTo(CFrame.lookAt(npc.position, npc.position + Vector3.new(dir.X, 0, dir.Z)))
+			end
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(updateNPCBehavior)
 
 return NPCManager
