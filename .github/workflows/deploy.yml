@@ -42,15 +42,34 @@ jobs:
           path: ~/.local/bin/rojo
           key: rojo-${{ env.ROJO_VERSION }}-linux
 
-      - name: 下載並安裝 Rojo ${{ env.ROJO_VERSION }}
+      - name: 安裝 Rojo ${{ env.ROJO_VERSION }}
         if: steps.cache-rojo.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/.local/bin
-          curl -fsSL \
-            "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux.zip" \
-            -o rojo.zip
-          unzip rojo.zip rojo -d ~/.local/bin
-          chmod +x ~/.local/bin/rojo
+
+          # 透過 GitHub API 查詢正確的 Linux release asset URL
+          ASSET_URL=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/rojo-rbx/rojo/releases/tags/v${ROJO_VERSION}" \
+            | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          assets = [a['browser_download_url'] for a in data.get('assets', [])
+                    if 'linux' in a['name'].lower() and a['name'].endswith('.zip')]
+          print(assets[0] if assets else '')
+          ")
+
+          if [ -n "$ASSET_URL" ]; then
+            echo "下載預編譯二進位檔：$ASSET_URL"
+            curl -fsSL "$ASSET_URL" -o rojo.zip
+            unzip rojo.zip -d rojo_bin
+            find rojo_bin -type f -name "rojo" -exec cp {} ~/.local/bin/rojo \;
+            chmod +x ~/.local/bin/rojo
+          else
+            echo "找不到預編譯二進位檔，改用 cargo 安裝（需要幾分鐘）..."
+            cargo install rojo --version "${ROJO_VERSION}" --locked
+            cp "$(which rojo)" ~/.local/bin/rojo
+          fi
 
       - name: 將 Rojo 加入 PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
