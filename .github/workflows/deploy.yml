@@ -1,0 +1,130 @@
+# 貓咪大戰 CI/CD 流程
+#
+# 所需 Repository Secrets（Settings → Secrets → Actions）：
+#   OPEN_CLOUD_API_KEY  — Roblox Open Cloud API 金鑰
+#                         Creator Hub → Open Cloud → API Keys → 建立一把，
+#                         權限勾選 universe:place:files:write
+#   UNIVERSE_ID         — 目標 Universe ID（Studio → 遊戲設定裡可查到）
+#   PLACE_ID            — 目標 Place ID（首頁 Place 的數字 ID）
+#
+# 觸發時機：
+#   • 任何分支 push → 執行「建置驗證」（只 build，不 deploy）
+#   • 推送到 main   → 建置 + 自動部署到 Roblox 測試伺服器
+#   • 手動觸發      → 可從任意分支手動觸發部署
+
+name: Build & Deploy to Roblox
+
+on:
+  push:
+    branches:
+      - "**"           # 所有分支都跑 build 驗證
+  workflow_dispatch:   # 手動觸發（可在任意分支執行部署）
+
+env:
+  ROJO_VERSION: "7.4.4"
+
+# ──────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── Job 1：建置驗證（所有分支） ──────────────────────────────────
+  build:
+    name: 🔨 Build game.rbxl
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+
+      - name: 快取 Rojo 二進位檔
+        id: cache-rojo
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/rojo
+          key: rojo-${{ env.ROJO_VERSION }}-linux
+
+      - name: 下載並安裝 Rojo ${{ env.ROJO_VERSION }}
+        if: steps.cache-rojo.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.local/bin
+          curl -fsSL \
+            "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux.zip" \
+            -o rojo.zip
+          unzip rojo.zip rojo -d ~/.local/bin
+          chmod +x ~/.local/bin/rojo
+
+      - name: 將 Rojo 加入 PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 驗證 Rojo 版本
+        run: rojo --version
+
+      - name: 建置 game.rbxl
+        run: rojo build default.project.json -o game.rbxl
+
+      - name: 上傳建置產物
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-rbxl-${{ github.sha }}
+          path: game.rbxl
+          retention-days: 7
+
+  # ── Job 2：部署（僅 main 分支或手動觸發） ───────────────────────
+  deploy:
+    name: 🚀 Deploy to Roblox Open Cloud
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    environment:
+      name: test-server
+      url: https://www.roblox.com/games/${{ secrets.PLACE_ID }}
+
+    steps:
+      - name: 下載建置產物
+        uses: actions/download-artifact@v4
+        with:
+          name: game-rbxl-${{ github.sha }}
+
+      - name: 確認 game.rbxl 存在
+        run: |
+          ls -lh game.rbxl
+          echo "檔案大小：$(du -sh game.rbxl | cut -f1)"
+
+      - name: 推送至 Roblox Open Cloud
+        id: deploy
+        env:
+          API_KEY: ${{ secrets.OPEN_CLOUD_API_KEY }}
+          UNIVERSE_ID: ${{ secrets.UNIVERSE_ID }}
+          PLACE_ID: ${{ secrets.PLACE_ID }}
+        run: |
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            --request POST \
+            --header "x-api-key: ${API_KEY}" \
+            --header "Content-Type: application/octet-stream" \
+            --data-binary @game.rbxl \
+            "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published")
+
+          echo "HTTP 狀態碼：${HTTP_STATUS}"
+          echo "回應內容：$(cat response.json)"
+
+          if [ "${HTTP_STATUS}" -ne 200 ]; then
+            echo "::error::部署失敗，HTTP 狀態碼：${HTTP_STATUS}"
+            exit 1
+          fi
+
+          VERSION_NUMBER=$(cat response.json | grep -o '"versionNumber":[0-9]*' | grep -o '[0-9]*')
+          echo "::notice::✅ 部署成功！版本號：${VERSION_NUMBER}"
+          echo "version_number=${VERSION_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: 輸出部署摘要
+        if: success()
+        run: |
+          echo "## ✅ 部署成功" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 項目 | 值 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 分支 | \`${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Universe ID | \`${{ secrets.UNIVERSE_ID }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 版本號 | \`${{ steps.deploy.outputs.version_number }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 部署時間 | $(date '+%Y-%m-%d %H:%M:%S UTC') |" >> "$GITHUB_STEP_SUMMARY"
