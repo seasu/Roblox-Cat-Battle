@@ -12,7 +12,7 @@ local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
 local useSkillEvent = remoteEvents:WaitForChild("UseSkill") :: RemoteEvent
 
 -- 目前技能列映射：slot -> skillId（由 GameClient 在初始化後設置）
-CombatClient.skillSlots: { string } = {}
+CombatClient.skillSlots = {} :: { string }
 
 -- 快捷鍵對應（第 2–6 槽）
 local KEY_BINDINGS: { [Enum.KeyCode]: number } = {
