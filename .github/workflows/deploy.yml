@@ -77,7 +77,6 @@ jobs:
 
     environment:
       name: test-server
-      url: https://www.roblox.com/games/${{ secrets.PLACE_ID }}
 
     steps:
       - name: 下載建置產物
