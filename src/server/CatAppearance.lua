@@ -79,45 +79,54 @@ local function addCatEars(character, colors)
 	local head = character:FindFirstChild("Head")
 	if not head then return end
 
+	local earSize = Vector3.new(0.28, 0.45, 0.22)
+	-- 動態計算頭頂位置，避免不同角色頭部大小造成貼歪
+	local headHalfY = head.Size.Y / 2
+	local earHalfY  = earSize.Y / 2
+	-- 耳朵往頭頂中線略微內傾（±0.12 rad）讓它看起來更自然
+	local tiltL = CFrame.Angles(0, 0, -0.12)
+	local tiltR = CFrame.Angles(0, 0,  0.12)
+
 	-- 左耳
-	local earL = makePart("CatEarLeft", Vector3.new(0.28, 0.46, 0.22), colors.accent)
-	earL.CFrame = head.CFrame * CFrame.new(-0.34, 0.52, -0.08) * CFrame.Angles(0, 0, -0.25)
+	local earL = makePart("CatEarLeft", earSize, colors.accent)
+	earL.CFrame = head.CFrame * CFrame.new(-0.27, headHalfY + earHalfY - 0.04, -0.04) * tiltL
 	earL.Parent = character
 	weld(head, earL)
 
-	local earLInner = makePart("CatEarLeftInner", Vector3.new(0.16, 0.28, 0.15), BrickColor.new("Carnation pink"))
-	earLInner.CFrame = head.CFrame * CFrame.new(-0.34, 0.51, -0.11) * CFrame.Angles(0, 0, -0.25)
+	local earLInner = makePart("CatEarLeftInner", Vector3.new(0.16, 0.27, 0.14), BrickColor.new("Carnation pink"))
+	earLInner.CFrame = head.CFrame * CFrame.new(-0.27, headHalfY + earHalfY - 0.04, -0.07) * tiltL
 	earLInner.Parent = character
 	weld(head, earLInner)
 
 	-- 右耳
-	local earR = makePart("CatEarRight", Vector3.new(0.28, 0.46, 0.22), colors.accent)
-	earR.CFrame = head.CFrame * CFrame.new(0.34, 0.52, -0.08) * CFrame.Angles(0, 0, 0.25)
+	local earR = makePart("CatEarRight", earSize, colors.accent)
+	earR.CFrame = head.CFrame * CFrame.new(0.27, headHalfY + earHalfY - 0.04, -0.04) * tiltR
 	earR.Parent = character
 	weld(head, earR)
 
-	local earRInner = makePart("CatEarRightInner", Vector3.new(0.16, 0.28, 0.15), BrickColor.new("Carnation pink"))
-	earRInner.CFrame = head.CFrame * CFrame.new(0.34, 0.51, -0.11) * CFrame.Angles(0, 0, 0.25)
+	local earRInner = makePart("CatEarRightInner", Vector3.new(0.16, 0.27, 0.14), BrickColor.new("Carnation pink"))
+	earRInner.CFrame = head.CFrame * CFrame.new(0.27, headHalfY + earHalfY - 0.04, -0.07) * tiltR
 	earRInner.Parent = character
 	weld(head, earRInner)
 end
 
--- 在背後加上翹起的貓尾巴（兩段，末端白球）
+-- 在背後加上翹起的貓尾巴（主段 + 末端白球，球焊接在尾巴上）
 local function addCatTail(character, colors)
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	-- 尾巴主段
-	local tail = makePart("CatTailMain", Vector3.new(0.2, 1.4, 0.2), colors.main)
-	tail.CFrame = hrp.CFrame * CFrame.new(0, -0.25, 0.72) * CFrame.Angles(0.65, 0, 0)
+	local tailSize = Vector3.new(0.2, 1.5, 0.2)
+	local tail = makePart("CatTailMain", tailSize, colors.main)
+	-- 從臀部後方斜向翹起（0.7 rad ≈ 40°，看起來像貓尾巴翹起姿態）
+	tail.CFrame = hrp.CFrame * CFrame.new(0, -0.5, 0.65) * CFrame.Angles(0.7, 0, 0)
 	tail.Parent = character
 	weld(hrp, tail)
 
-	-- 尾巴尖端（白色小球）
-	local tip = makePart("CatTailTip", Vector3.new(0.32, 0.32, 0.32), BrickColor.new("White"), Enum.PartType.Ball)
-	tip.CFrame = hrp.CFrame * CFrame.new(0, 0.28, 1.2) * CFrame.Angles(0.65, 0, 0)
+	-- 尾尖白球：焊接到尾巴本身，位於尾巴頂端正上方，不會跑位
+	local tip = makePart("CatTailTip", Vector3.new(0.3, 0.3, 0.3), BrickColor.new("White"), Enum.PartType.Ball)
+	tip.CFrame = tail.CFrame * CFrame.new(0, tailSize.Y / 2 + 0.15, 0)
 	tip.Parent = character
-	weld(hrp, tip)
+	weld(tail, tip)
 end
 
 -- 主入口：將指定貓咪的外觀套用到玩家角色

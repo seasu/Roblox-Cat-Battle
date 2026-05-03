@@ -81,8 +81,24 @@ Players.PlayerAdded:Connect(function(player: Player)
 	SkillManager.initInnateSkills(player)
 	CatManager.initPlayer(player)
 
-	-- 角色外觀載入完成後套用貓咪顏色 + 貓耳 + 尾巴
+	-- 角色外觀載入完成後：套用貓咪外觀 + 開啟血條常駐 + 啟動 HP 自動回復
 	player.CharacterAppearanceLoaded:Connect(function(character)
+		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+
+		-- 血條永遠顯示
+		humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+		humanoid.HealthDisplayDistance = 100
+
+		-- HP 自動回復：每 1 秒回復 1 點，角色存活期間持續運作
+		task.spawn(function()
+			while character.Parent ~= nil do
+				task.wait(1)
+				if humanoid.Health > 0 and humanoid.Health < humanoid.MaxHealth then
+					humanoid.Health = math.min(humanoid.Health + 1, humanoid.MaxHealth)
+				end
+			end
+		end)
+
 		local pData = DataStore.getData(player)
 		local catId = pData and pData.activeCatId or "whiteCat"
 		CatAppearance.apply(player, catId)
