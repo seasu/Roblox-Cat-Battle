@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ScriptContext = game:GetService("ScriptContext")
 
 local DataStore = require(script.Parent.DataStore)
 local ExperienceManager = require(script.Parent.ExperienceManager)
@@ -28,11 +29,48 @@ local function getFunction(name: string)
 	return remoteFunctions:WaitForChild(name) :: RemoteFunction
 end
 
+-- 監聽伺服器腳本錯誤（方便定位實際報錯檔案與內容）
+ScriptContext.Error:Connect(function(message: string, stackTrace: string, scriptInstance: Instance?)
+	local scriptName = scriptInstance and scriptInstance:GetFullName() or "UnknownScript"
+	warn(string.format("[ServerError] %s | %s", scriptName, message))
+	if stackTrace ~= "" then
+		warn("[ServerErrorStack] " .. stackTrace)
+	end
+end)
+
 -- 初始化商店
-ShopManager.init()
+local okShop, shopErr = pcall(function()
+	ShopManager.init()
+end)
+if not okShop then
+	warn("[ServerBootstrap] ShopManager.init 失敗：" .. tostring(shopErr))
+end
 
 -- 啟動 NPC 生成迴圈
-NPCManager.startSpawnLoop()
+local okSpawn, spawnErr = pcall(function()
+	NPCManager.startSpawnLoop()
+end)
+if not okSpawn then
+	warn("[ServerBootstrap] NPCManager.startSpawnLoop 失敗：" .. tostring(spawnErr))
+end
+
+-- 啟動自檢：確認 NPC 是否成功生成
+task.delay(3, function()
+	local okCount, npcCountOrErr = pcall(function()
+		return NPCManager.getActiveNPCCount()
+	end)
+	if not okCount then
+		warn("[ServerBootstrap] 讀取 NPC 數量失敗：" .. tostring(npcCountOrErr))
+		return
+	end
+
+	local npcCount = npcCountOrErr :: number
+	if npcCount <= 0 then
+		warn("[ServerBootstrap] NPC 生成失敗：3 秒後仍為 0。請確認 Play 模式、Rojo 同步、Server Output 中的 [ServerError]。")
+	else
+		print(string.format("[ServerBootstrap] NPC 生成成功，目前數量：%d", npcCount))
+	end
+end)
 
 -- ── 玩家加入 / 離開 ──────────────────────────────────────────────
 Players.PlayerAdded:Connect(function(player: Player)

@@ -2,8 +2,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
-local UIManager = require(script.Parent.UIManager)
-local CombatClient = require(script.Parent.CombatClient)
+local UIManager = require(script.Parent:WaitForChild("UIManager"))
+local CombatClient = require(script.Parent:WaitForChild("CombatClient"))
 
 local localPlayer = Players.LocalPlayer
 local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")

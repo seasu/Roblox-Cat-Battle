@@ -3,7 +3,7 @@ type NPCDefinition = Types.NPCDefinition
 
 local NPCData = {}
 
-NPCData.npcs: { [string]: NPCDefinition } = {
+local npcs: { [string]: NPCDefinition } = {
 
 	-- 玩偶（Doll）——靜止訓練假人
 	dollEasy = {
@@ -128,6 +128,8 @@ NPCData.npcs: { [string]: NPCDefinition } = {
 		modelKey = "WildHuman_Hard",
 	},
 }
+
+NPCData.npcs = npcs
 
 function NPCData.getNPCById(npcId: string): NPCDefinition?
 	return NPCData.npcs[npcId]

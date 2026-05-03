@@ -25,7 +25,7 @@ local defaultStats: CatStats = {
 	critChance = 0.05,
 }
 
-CatData.cats: { [string]: CatDefinition } = {
+local cats: { [string]: CatDefinition } = {
 
 	whiteCat = {
 		id = "whiteCat",
@@ -162,6 +162,8 @@ CatData.cats: { [string]: CatDefinition } = {
 		baseStats = { maxHp = 95, attack = 14, defense = 6, speed = 17, critChance = 0.20 },
 	},
 }
+
+CatData.cats = cats
 
 function CatData.getCatById(catId: string): CatDefinition?
 	return CatData.cats[catId]
