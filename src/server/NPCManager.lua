@@ -1,5 +1,7 @@
 local workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local NPCData = require(ReplicatedStorage.Shared.NPCData)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 
@@ -15,6 +17,9 @@ local combatHitEvent = remoteEvents:WaitForChild("CombatHit")
 local activeNPCs = {}
 local npcModels = {}
 local idCounter = 0
+local npcHomePositions = {}
+local npcNextAttackAt = {}
+local npcWanderTargets = {}
 
 -- 各 NPC 的視覺設定（難度 → 縮放比例 + 主色 + 配色）
 local NPC_CONFIG = {
@@ -27,6 +32,13 @@ local NPC_CONFIG = {
 	wildHumanEasy   = { kind="wildHuman", scale=1.0, main=BrickColor.new("Brown"),         accent=BrickColor.new("Reddish brown") },
 	wildHumanMedium = { kind="wildHuman", scale=1.3, main=BrickColor.new("Reddish brown"), accent=BrickColor.new("Dark orange")   },
 	wildHumanHard   = { kind="wildHuman", scale=1.6, main=BrickColor.new("Maroon"),        accent=BrickColor.new("Really black")  },
+}
+
+-- NPC 移動速度（玩偶靜止，野貓和野人會追逐玩家）
+local MOVE_SPEED_BY_KIND = {
+	doll      = 0,
+	wildCat   = 14,
+	wildHuman = 11,
 }
 
 -- 生成區域
@@ -69,7 +81,7 @@ end
 local function addInfoGui(body, def, topOffset)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "InfoGui"
-	billboard.Size = UDim2.new(0, 160, 0, 50)
+	billboard.Size = UDim2.new(0, 160, 0, 55)
 	billboard.StudsOffset = Vector3.new(0, topOffset + 2, 0)
 	billboard.AlwaysOnTop = false
 	billboard.MaxDistance = 60
@@ -83,7 +95,7 @@ local function addInfoGui(body, def, topOffset)
 	nameLabel.TextColor3 = Color3.new(1, 1, 1)
 	nameLabel.TextStrokeTransparency = 0.3
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 14
+	nameLabel.TextSize = 15
 	nameLabel.Parent = billboard
 
 	local hpLabel = Instance.new("TextLabel")
@@ -91,11 +103,11 @@ local function addInfoGui(body, def, topOffset)
 	hpLabel.Size = UDim2.new(1, 0, 0.5, 0)
 	hpLabel.Position = UDim2.new(0, 0, 0.5, 0)
 	hpLabel.BackgroundTransparency = 1
-	hpLabel.Text = "HP " .. def.maxHp .. "/" .. def.maxHp
-	hpLabel.TextColor3 = Color3.fromRGB(80, 255, 80)
+	hpLabel.Text = "❤ " .. def.maxHp .. " / " .. def.maxHp
+	hpLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 	hpLabel.TextStrokeTransparency = 0.3
 	hpLabel.Font = Enum.Font.Gotham
-	hpLabel.TextSize = 12
+	hpLabel.TextSize = 13
 	hpLabel.Parent = billboard
 end
 
@@ -343,6 +355,19 @@ local function createNPCModel(def, instanceId, spawnPos)
 	return builder(def, instanceId, spawnPos, cfg.scale, { main = cfg.main, accent = cfg.accent })
 end
 
+-- 更新 HP 標籤顏色與文字
+local function updateHPLabel(model, current, max)
+	local body = model:FindFirstChild("Body")
+	if not body then return end
+	local gui = body:FindFirstChild("InfoGui")
+	if not gui then return end
+	local hpLabel = gui:FindFirstChild("HpLabel")
+	if not hpLabel then return end
+	local ratio = math.clamp(current / max, 0, 1)
+	hpLabel.TextColor3 = Color3.fromRGB(math.floor(255 * (1 - ratio)), math.floor(255 * ratio), 0)
+	hpLabel.Text = "❤ " .. math.max(0, current) .. " / " .. max
+end
+
 function NPCManager.spawnNPC(npcId, position)
 	local def = NPCData.getNPCById(npcId)
 	if not def then
@@ -367,13 +392,18 @@ function NPCManager.spawnNPC(npcId, position)
 		return nil
 	end
 
+	-- 使用模型的實際 Pivot 位置作為追蹤位置（Body 中心）
+	local pivotPos = result:GetPivot().Position
+
 	activeNPCs[instanceId] = {
 		definition = def,
 		currentHp  = def.maxHp,
-		position   = spawnPos,
+		position   = pivotPos,
 		instanceId = instanceId,
 	}
 	npcModels[instanceId] = result
+	npcHomePositions[instanceId] = pivotPos
+	npcNextAttackAt[instanceId] = 0
 
 	print("[NPCManager] 生成 NPC：", def.displayName, "at", spawnPos)
 	return activeNPCs[instanceId]
@@ -403,23 +433,8 @@ function NPCManager.handleAttack(attacker, instanceId, damage, statusEffect)
 
 	local model = npcModels[instanceId]
 	if model then
-		local body = model:FindFirstChild("Body")
-		if body then
-			local gui = body:FindFirstChild("InfoGui")
-			if gui then
-				local hpLabel = gui:FindFirstChild("HpLabel")
-				if hpLabel then
-					local ratio = math.clamp(npc.currentHp / npc.definition.maxHp, 0, 1)
-					hpLabel.TextColor3 = Color3.fromRGB(
-						math.floor(255 * (1 - ratio)),
-						math.floor(255 * ratio),
-						0
-					)
-					hpLabel.Text = "HP " .. math.max(0, npc.currentHp) .. "/" .. npc.definition.maxHp
-				end
-			end
-			combatHitEvent:FireAllClients(instanceId, body.Position, finalDamage, false)
-		end
+		updateHPLabel(model, npc.currentHp, npc.definition.maxHp)
+		combatHitEvent:FireAllClients(instanceId, model:GetPivot().Position, finalDamage, false)
 	end
 
 	if npc.currentHp <= 0 then
@@ -434,6 +449,9 @@ function NPCManager.handleDeath(instanceId, killer)
 	local def = npc.definition
 	local savedPosition = npc.position
 	activeNPCs[instanceId] = nil
+	npcHomePositions[instanceId] = nil
+	npcWanderTargets[instanceId] = nil
+	npcNextAttackAt[instanceId] = nil
 
 	local model = npcModels[instanceId]
 	if model then
@@ -479,6 +497,14 @@ function NPCManager.getNPCsInRadius(center, radius)
 	return result
 end
 
+function NPCManager.getActiveNPCCount()
+	local count = 0
+	for _ in pairs(activeNPCs) do
+		count += 1
+	end
+	return count
+end
+
 function NPCManager.getNearbyNPCs(originInstanceId, radius, maxCount)
 	local origin = activeNPCs[originInstanceId]
 	if not origin then return {} end
@@ -491,5 +517,71 @@ function NPCManager.getNearbyNPCs(originInstanceId, radius, maxCount)
 	end
 	return result
 end
+
+-- 找距離 position 最近且在 maxDistance 內的存活玩家
+local function getNearestPlayer(position, maxDistance)
+	local nearest, nearestDist = nil, maxDistance
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+		local hum  = char and char:FindFirstChildOfClass("Humanoid")
+		if hrp and hum and hum.Health > 0 then
+			local dist = (hrp.Position - position).Magnitude
+			if dist < nearestDist then
+				nearest, nearestDist = player, dist
+			end
+		end
+	end
+	return nearest, nearestDist
+end
+
+-- 每幀更新 NPC 移動 / 攻擊行為（玩偶靜止，野貓/野人主動追人）
+local function updateNPCBehavior(deltaTime)
+	for id, npc in pairs(activeNPCs) do
+		local model = npcModels[id]
+		if not model then continue end
+
+		local cfg = NPC_CONFIG[npc.definition.id]
+		local speed = cfg and MOVE_SPEED_BY_KIND[cfg.kind] or 0
+		local home = npcHomePositions[id] or npc.position
+		local targetPos = home
+
+		local player, dist = getNearestPlayer(npc.position, 45)
+
+		if player and dist <= 45 then
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				targetPos = hrp.Position
+				if dist <= 5 then
+					local now = os.clock()
+					if now >= (npcNextAttackAt[id] or 0) then
+						npcNextAttackAt[id] = now + 1.2
+						local hum = player.Character:FindFirstChildOfClass("Humanoid")
+						if hum then hum:TakeDamage(npc.definition.attack) end
+					end
+				end
+			end
+		elseif speed > 0 then
+			local wander = npcWanderTargets[id]
+			if not wander or (wander - npc.position).Magnitude < 3 then
+				wander = home + Vector3.new(math.random(-18, 18), 0, math.random(-18, 18))
+				npcWanderTargets[id] = wander
+			end
+			targetPos = wander
+		end
+
+		if speed > 0 then
+			local toTarget = Vector3.new(targetPos.X - npc.position.X, 0, targetPos.Z - npc.position.Z)
+			if toTarget.Magnitude > 0.1 then
+				local step = math.min(toTarget.Magnitude, speed * deltaTime)
+				local dir = toTarget.Unit
+				npc.position = npc.position + dir * step
+				model:PivotTo(CFrame.lookAt(npc.position, npc.position + dir))
+			end
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(updateNPCBehavior)
 
 return NPCManager

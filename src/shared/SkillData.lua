@@ -3,7 +3,7 @@ type SkillDefinition = Types.SkillDefinition
 
 local SkillData = {}
 
-SkillData.skills: { [string]: SkillDefinition } = {
+local skills: { [string]: SkillDefinition } = {
 
 	BasicSwipe = {
 		id = "BasicSwipe",
@@ -239,6 +239,8 @@ SkillData.skills: { [string]: SkillDefinition } = {
 		statusEffect = nil,
 	},
 }
+
+SkillData.skills = skills
 
 function SkillData.getSkillById(skillId: string): SkillDefinition?
 	return SkillData.skills[skillId]
