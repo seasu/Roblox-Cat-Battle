@@ -367,13 +367,17 @@ function CombatClient.attemptBasicAttack()
 	if not root then return end
 
 	local instanceId, hitPos = getMouseTarget()
+	
+	-- 無論是否打中 NPC，都播放揮手動作與聲音，提供操作回饋
+	local vfxPos = hitPos or (root.Position + root.CFrame.LookVector * 3)
+	
 	if instanceId then
 		useSkillEvent:FireServer("BasicSwipe", instanceId)
-		local vfxPos = hitPos or (root.Position + Vector3.new(0, 0, -3))
-		spawnAttackVFX("BasicSwipe", vfxPos)
-		playOneShotSound("rbxassetid://12222225", vfxPos, 0.6)
-		triggerSwingForSkill("BasicSwipe")
 	end
+	
+	spawnAttackVFX("BasicSwipe", vfxPos)
+	playOneShotSound("rbxassetid://12222225", vfxPos, 0.6)
+	triggerSwingForSkill("BasicSwipe")
 end
 
 function CombatClient.activateSkill(slotIndex: number)
@@ -458,18 +462,26 @@ end
 
 -- ── 攻擊揮手動畫 ─────────────────────────────────────────────────
 -- 找出手臂的 Motor6D (肩部關節)
--- 邏輯：尋找 Part1 為 Right Arm (R6) 或 RightUpperArm (R15) 的 Motor6D
 local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
-	local targetPartName = (side == "Right") and "Right Arm" or "Left Arm"
-	local targetPartNameR15 = (side == "Right") and "RightUpperArm" or "LeftUpperArm"
+	local sidePattern = (side == "Right") and "Right" or "Left"
 	
-	local armPart = char:FindFirstChild(targetPartName) or char:FindFirstChild(targetPartNameR15)
-	if not armPart or not armPart:IsA("BasePart") then return nil end
-	
-	-- 遍歷角色尋找對應的 Motor6D
+	-- 優先透過 Part1 定位（尋找 Part1 為手臂部位的 Motor6D）
 	for _, m in ipairs(char:GetDescendants()) do
-		if m:IsA("Motor6D") and m.Part1 == armPart then
-			return m
+		if m:IsA("Motor6D") and m.Part1 then
+			local p1Name = m.Part1.Name
+			if string.find(p1Name, sidePattern) and (string.find(p1Name, "Arm") or string.find(p1Name, "Hand") or string.find(p1Name, "Paw")) then
+				return m
+			end
+		end
+	end
+	
+	-- 次要：透過 Motor6D 本身名稱定位
+	for _, m in ipairs(char:GetDescendants()) do
+		if m:IsA("Motor6D") then
+			local mName = m.Name
+			if string.find(mName, sidePattern) and (string.find(mName, "Shoulder") or string.find(mName, "Arm")) then
+				return m
+			end
 		end
 	end
 	
@@ -489,9 +501,6 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	swingActive = true
 	local startTime = os.clock()
 	
-	-- 建立一個透明的 AnimationTrack 來「壓制」其他的 Idle 動畫（選用，若 RenderStepped 夠強則不一定需要）
-	-- 但 RenderStepped 應該是最後執行的，所以理論上能覆蓋。
-	
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		local elapsed = os.clock() - startTime
@@ -504,21 +513,18 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			return
 		end
 
-		-- 動作曲線 (Ease-in-out + 打擊感)
+		-- 動作曲線 (更加激進的揮動)
 		local alpha = 0
-		if t < 0.25 then
-			-- 0% -> 25%: 極速揮出 (用立方曲線增加速度感)
-			alpha = (t / 0.25) ^ 3
-		elseif t < 0.35 then
-			-- 25% -> 35%: 停頓 (打擊感核心)
-			alpha = 1
+		if t < 0.2 then
+			alpha = (t / 0.2) ^ 2 -- 快速揮出
+		elseif t < 0.3 then
+			alpha = 1 -- 停頓打擊感
 		else
-			-- 35% -> 100%: 緩慢回彈 (用 EaseOut)
-			local backT = (t - 0.35) / 0.65
-			alpha = 1 - (1 - (1 - backT) ^ 2) -- 簡化的回彈曲線
+			local backT = (t - 0.3) / 0.7
+			alpha = math.cos(backT * math.pi / 2) -- 平滑收回
 		end
 
-		-- 強制覆寫：不管 Animate 腳本做了什麼，在渲染前最後一刻設定這個值
+		-- 強制覆寫
 		motor.Transform = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
 	end)
 end
