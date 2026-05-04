@@ -970,7 +970,71 @@ function UIManager.updateXPBar(current: number, max: number, level: number)
 end
 
 function UIManager.showLevelUpEffect(newLevel: number)
-	UIManager.showToast("⬆ 升級！現在是 Lv." .. newLevel, Color3.fromRGB(255, 220, 50))
+	-- 大型全螢幕升級橫幅
+	local banner = Instance.new("Frame")
+	banner.Size = UDim2.new(1, 0, 0, 0)
+	banner.Position = UDim2.new(0, 0, 0.35, 0)
+	banner.BackgroundColor3 = Color3.fromRGB(20, 10, 0)
+	banner.BackgroundTransparency = 0.15
+	banner.BorderSizePixel = 0
+	banner.ZIndex = 50
+	banner.Parent = screenGui
+
+	-- 閃光邊框（金色）
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(255, 200, 30)
+	stroke.Thickness = 3
+	stroke.Parent = banner
+
+	-- 主文字：LEVEL UP!
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(1, 0, 0, 60)
+	titleLbl.Position = UDim2.new(0, 0, 0, 6)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = "✨  LEVEL UP!  ✨"
+	titleLbl.TextScaled = true
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.TextColor3 = Color3.fromRGB(255, 230, 60)
+	titleLbl.TextStrokeColor3 = Color3.fromRGB(180, 100, 0)
+	titleLbl.TextStrokeTransparency = 0.2
+	titleLbl.ZIndex = 51
+	titleLbl.Parent = banner
+
+	-- 副文字：等級數字
+	local levelLbl = Instance.new("TextLabel")
+	levelLbl.Size = UDim2.new(1, 0, 0, 44)
+	levelLbl.Position = UDim2.new(0, 0, 0, 68)
+	levelLbl.BackgroundTransparency = 1
+	levelLbl.Text = "🐾  Lv. " .. newLevel .. "  🐾"
+	levelLbl.TextScaled = true
+	levelLbl.Font = Enum.Font.GothamBold
+	levelLbl.TextColor3 = Color3.new(1, 1, 1)
+	levelLbl.TextStrokeTransparency = 0.4
+	levelLbl.ZIndex = 51
+	levelLbl.Parent = banner
+
+	-- 動態調整橫幅高度（兩行文字 + 內距）
+	banner.Size = UDim2.new(1, 0, 0, 120)
+
+	-- 進場動畫：從透明縮放到全尺寸
+	banner.BackgroundTransparency = 1
+	titleLbl.TextTransparency = 1
+	levelLbl.TextTransparency = 1
+
+	TweenService:Create(banner, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ BackgroundTransparency = 0.15 }):Play()
+	TweenService:Create(titleLbl, TweenInfo.new(0.30), { TextTransparency = 0 }):Play()
+	TweenService:Create(levelLbl, TweenInfo.new(0.30), { TextTransparency = 0 }):Play()
+
+	-- 停留 2.5 秒後淡出
+	task.delay(2.5, function()
+		TweenService:Create(banner, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0.30, 0) }):Play()
+		TweenService:Create(titleLbl, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
+		local t = TweenService:Create(levelLbl, TweenInfo.new(0.5), { TextTransparency = 1 })
+		t:Play()
+		t.Completed:Connect(function() banner:Destroy() end)
+	end)
 end
 
 function UIManager.refreshCatDisplay(catId: string, appearance: string, level: number, tierDesc: string)
