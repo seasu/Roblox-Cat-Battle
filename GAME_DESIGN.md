@@ -9,7 +9,7 @@
 | 系統 | 後端 | 前端 UI | 備註 |
 |---|---|---|---|
 | 玩家資料 / DataStore | ✅ | — | DataStore.lua，指數退避重試 |
-| 貓咪選擇 | ✅ | ⚠️ | 後端完整；UI 只有 toast，無選擇面板 |
+| 貓咪選擇 | ✅ | ✅ | 商城貓咪 tab 已加入「切換使用」按鈕 |
 | 貓咪外觀（全身替換） | ✅ | — | CatAppearance.lua，R6/R15 均支援 |
 | 等級 / 經驗值 | ✅ | ✅ | XP bar + 升級 toast |
 | 技能系統 | ✅ | ✅ | 技能列 Q/E/R/F，冷卻 overlay |
@@ -19,7 +19,7 @@
 | 商城（金幣買裝備） | ✅ | ✅ | 商城裝備 tab，BuyEquipment 事件 |
 | 寵物合成系統 | ✅ | ✅ | 碎片 drop + 合成後端 + 合成 tab |
 | NPC 生成 / AI | ✅ | — | 三種 NPC 類型，追逐 + 漫步 |
-| PvP 系統 | ✅ | ⚠️ | 後端完整；UI 只有 toast |
+| PvP 系統 | ✅ | ✅ | 新增 PvP 面板（列出線上玩家，可點擊發起挑戰） |
 | 地圖 / 場景 | ✅ | — | WorldSetup，3 區圍繞出生點 |
 | HP 顯示 / 自動回復 | ✅ | — | AlwaysOn + 每秒 +1 HP |
 
@@ -131,7 +131,13 @@
 
 ## 變更日誌
 
-### 2026-05-04
+### 2026-05-04（第二批）
+- **貓咪選擇 UI**：`showCatsTab` 已擁有的貓咪新增「切換使用」按鈕，呼叫 `SelectCat:FireServer(catId)`；目前使用中顯示「使用中」標示
+- **PvP 發起 UI**：新增 `openPvPPanel` 函式，列出當前線上玩家，點擊「發起挑戰」呼叫 `RequestPvP:FireServer(userId)`；底部新增「⚔ PvP」按鈕
+- **Cursor 規則**：新增 `.cursor/rules/dev-guide.mdc`，整合 CLAUDE.md / PRD.md / GAME_DESIGN.md 的快速導引，AI 可自動參照
+- **修改檔案**：`src/client/UIManager.lua`、`GAME_DESIGN.md`、`.cursor/rules/dev-guide.mdc`
+
+### 2026-05-04（第一批）
 - **商城 UI**：新增 🛒 商城按鈕，三個 Tab（貓咪/裝備/合成）
 - **裝備 UI**：新增 ⚔ 裝備按鈕，顯示三槽位裝備狀態
 - **BuyEquipment**：合併購買+裝備為單一事件，新增後端處理

@@ -146,6 +146,15 @@ function UIManager.buildMenuButtons()
 	equipBtn.MouseButton1Click:Connect(function()
 		UIManager.openEquipPanel()
 	end)
+
+	-- PvP 按鈕（中下）
+	local pvpBtn = createButton(screenGui, "⚔ PvP",
+		UDim2.new(0.43, 0, 0.88, 0),
+		UDim2.new(0.13, 0, 0.055, 0),
+		Color3.fromRGB(160, 40, 40))
+	pvpBtn.MouseButton1Click:Connect(function()
+		UIManager.openPvPPanel()
+	end)
 end
 
 -- ── 商城面板 ─────────────────────────────────────────────────────
@@ -278,19 +287,33 @@ function UIManager.openShopPanel()
 	local function showCatsTab()
 		clearScroll()
 		local catalog = getFunction("GetShopCatalog"):InvokeServer()
+		local currentCatId = playerData.currentCat or "whiteCat"
 		for i, cat in ipairs(catalog or {}) do
 			local owned = playerData.ownedCats and playerData.ownedCats[cat.id]
-			local rightText = cat.price .. " RB"
-			if owned then
-				buildCard(scroll, cat.displayName, cat.description, rightText, "✓ 已擁有", Color3.new(0,0,0))
+			local isActive = currentCatId == cat.id
+			local rightText = isActive and "▶ 使用中" or (cat.price .. " RB")
+			local card: Frame
+			if isActive then
+				-- 目前使用中的貓咪
+				card = buildCard(scroll, cat.displayName, cat.description, rightText, "使用中",
+					Color3.fromRGB(40, 160, 80))
+			elseif owned then
+				-- 已擁有但未使用，顯示「切換使用」按鈕
+				card = buildCard(scroll, cat.displayName, cat.description, rightText, "切換使用",
+					Color3.fromRGB(60, 120, 200), function()
+						getRemote("SelectCat"):FireServer(cat.id)
+						currentCatId = cat.id
+						UIManager.showToast("切換至 " .. cat.displayName, Color3.fromRGB(100, 200, 255))
+						task.delay(0.3, function() UIManager.openShopPanel() end)
+					end)
 			else
-				buildCard(scroll, cat.displayName, cat.description, rightText, "購買",
+				-- 未擁有，顯示購買按鈕
+				card = buildCard(scroll, cat.displayName, cat.description, rightText, "購買",
 					Color3.fromRGB(180, 100, 20), function()
 						getRemote("PurchaseCat"):FireServer(cat.id)
 					end)
 			end
-			local card = scroll:GetChildren()[i]
-			if card then (card :: Frame).LayoutOrder = i end
+			if card then card.LayoutOrder = i end
 		end
 	end
 
@@ -597,6 +620,84 @@ function UIManager.showPvPResult(won: boolean, opponentName: string, xpGained: n
 		msg = "敗北！輸給了 " .. opponentName
 	end
 	UIManager.showToast(msg, won and Color3.fromRGB(100, 220, 100) or Color3.fromRGB(220, 100, 100))
+end
+
+-- ── PvP 發起面板 ─────────────────────────────────────────────────
+
+function UIManager.openPvPPanel()
+	local overlay, scroll, _ = buildPanelBase("⚔ PvP 挑戰")
+
+	local Players = game:GetService("Players")
+	local localPlayer = Players.LocalPlayer
+	local panel = overlay:FindFirstChildOfClass("Frame")
+
+	-- 說明文字
+	local hintLbl = createLabel(panel,
+		"選擇一名線上玩家發起 PvP 對決，勝者獲得額外 XP 與金幣",
+		UDim2.new(0.03, 0, 0.09, 0), UDim2.new(0.94, 0, 0.06, 0), 13)
+	hintLbl.ZIndex = 22
+	hintLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+	hintLbl.Font = Enum.Font.Gotham
+
+	-- 移動 scroll 往下避開說明文字
+	scroll.Position = UDim2.new(0, 0, 0.16, 0)
+	scroll.Size = UDim2.new(1, 0, 0.84, 0)
+
+	local function refreshPlayerList()
+		for _, c in ipairs(scroll:GetChildren()) do
+			if c:IsA("Frame") then c:Destroy() end
+		end
+
+		local order = 0
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player == localPlayer then continue end
+			order += 1
+			local card = createFrame(scroll,
+				UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0, 60),
+				Color3.fromRGB(35, 35, 55), 0.1)
+			card.ZIndex = 23
+			card.LayoutOrder = order
+
+			local nameLbl = createLabel(card, player.DisplayName,
+				UDim2.new(0.02, 0, 0.1, 0), UDim2.new(0.55, 0, 0.45, 0), 16)
+			nameLbl.ZIndex = 24
+
+			local userLbl = createLabel(card, "@" .. player.Name,
+				UDim2.new(0.02, 0, 0.55, 0), UDim2.new(0.55, 0, 0.35, 0), 12)
+			userLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+			userLbl.Font = Enum.Font.Gotham
+			userLbl.ZIndex = 24
+
+			local challengeBtn = createButton(card, "發起挑戰",
+				UDim2.new(0.78, 0, 0.12, 0), UDim2.new(0.2, 0, 0.76, 0),
+				Color3.fromRGB(160, 40, 40))
+			challengeBtn.TextSize = 13
+			challengeBtn.ZIndex = 24
+			challengeBtn.MouseButton1Click:Connect(function()
+				getRemote("RequestPvP"):FireServer(player.UserId)
+				UIManager.showToast("已向 " .. player.DisplayName .. " 發起 PvP 挑戰！", Color3.fromRGB(255, 180, 50))
+				overlay:Destroy()
+			end)
+		end
+
+		-- 若沒有其他玩家
+		if order == 0 then
+			local noPlayerLbl = createLabel(scroll, "目前沒有其他玩家在線",
+				UDim2.new(0.1, 0, 0, 0), UDim2.new(0.8, 0, 0, 40), 16)
+			noPlayerLbl.ZIndex = 23
+			noPlayerLbl.TextXAlignment = Enum.TextXAlignment.Center
+		end
+	end
+
+	-- 重新整理按鈕
+	local refreshBtn = createButton(panel, "🔄 重新整理",
+		UDim2.new(0.55, 0, 0.09, 0), UDim2.new(0.2, 0, 0.06, 0),
+		Color3.fromRGB(50, 100, 50))
+	refreshBtn.ZIndex = 22
+	refreshBtn.TextSize = 13
+	refreshBtn.MouseButton1Click:Connect(refreshPlayerList)
+
+	refreshPlayerList()
 end
 
 return UIManager

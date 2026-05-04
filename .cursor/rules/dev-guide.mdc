@@ -1,0 +1,121 @@
+---
+description: Roblox Cat Battle 開發指引，適用於所有程式碼修改與新功能開發
+globs: ["**/*.lua", "**/*.json", "**/*.md"]
+alwaysApply: true
+---
+
+# Roblox Cat Battle — AI 開發指引
+
+> 本規則整合 CLAUDE.md、PRD.md、GAME_DESIGN.md 三份文件的核心資訊，  
+> AI 應優先查閱各原始文件取得最新狀態，本規則提供快速導引。
+
+---
+
+## 一、必讀文件順序
+
+處理任何任務前，請依序參照：
+
+1. **`GAME_DESIGN.md`** — 當前實作狀態總覽（✅/⚠️/❌），先確認功能是否已做
+2. **`PRD.md`** — 完整產品需求，包含所有數值、技能、NPC、貨幣定義
+3. **`CLAUDE.md`** — 開發環境、Rojo 結構、代碼守則、部署規則
+
+---
+
+## 二、開發環境快速參考
+
+- **語言：** Luau（強型別，盡量使用型別標註）
+- **工具：** Rojo（`rojo build --output game.rbxl`）
+- **部署：** GitHub Actions 自動 build + Open Cloud API 推送
+
+### 檔案結構對應
+
+| 路徑 | Roblox 位置 |
+|---|---|
+| `src/server/` | `ServerScriptService` |
+| `src/client/` | `StarterPlayer.StarterPlayerScripts` |
+| `src/shared/` | `ReplicatedStorage.Shared` |
+| `default.project.json` | RemoteEvent / RemoteFunction 定義 |
+
+---
+
+## 三、代碼守則（摘要）
+
+1. 變數與函式 → `camelCase`；服務引用 → `PascalCase`
+2. DataStore / 網絡請求 → 必須 `pcall`
+3. 邏輯放 `ModuleScript`，透過 `require` 呼叫
+4. **禁止**直接修改 `.rbxl` 二進制檔
+5. 新增 RemoteEvent → 修改 `default.project.json` 的 `ReplicatedStorage.RemoteEvents`
+
+---
+
+## 四、系統實作狀態（快速查閱，詳見 GAME_DESIGN.md）
+
+| 系統 | 後端 | 前端 UI |
+|---|---|---|
+| 玩家資料 / DataStore | ✅ | — |
+| 貓咪選擇 | ✅ | ⚠️ 缺選擇面板 |
+| 貓咪外觀（全身替換） | ✅ | — |
+| 等級 / 經驗值 | ✅ | ✅ |
+| 技能系統 | ✅ | ✅ |
+| 基礎攻擊 / 點擊 NPC | ✅ | ✅ |
+| 武器 / 裝備系統 | ✅ | ✅ |
+| 商城（Robux 買貓） | ✅ | ✅ |
+| 商城（金幣買裝備） | ✅ | ✅ |
+| 寵物合成系統 | ✅ | ✅ |
+| NPC 生成 / AI | ✅ | — |
+| PvP 系統 | ✅ | ⚠️ 缺發起 UI |
+| 地圖 / 場景 | ✅ | — |
+| HP 顯示 / 自動回復 | ✅ | — |
+
+---
+
+## 五、重要數值速查（詳見 PRD.md）
+
+### 升級公式
+```
+xpRequired(level) = floor(80 × level^1.85 + 20 × level)
+```
+
+### NPC XP 倍率
+- 玩偶 ×1.0、野貓 ×1.25、野人 ×1.5
+
+### 碎片合成機率
+- 玩偶：8%、野貓：15%、野人：22%；需收集 **10 個**相同碎片
+
+---
+
+## 六、RemoteEvent 清單（詳見 GAME_DESIGN.md 與 default.project.json）
+
+已定義的 RemoteEvent（全部在 `ReplicatedStorage.RemoteEvents`）：
+
+`RequestLoadData` / `LoadDataResponse` / `AddXP` / `LevelUp` / `UpdateCatAppearance` /  
+`SelectCat` / `SpawnNPC` / `NPCDied` / `PurchaseCat` / `PurchaseResult` /  
+`EquipItem` / `UnequipItem` / `EquipmentChanged` / `BuyEquipment` /  
+`UseSkill` / `SkillResult` / `SkillUnlocked` / `CombatHit` / `PlayerDied` / `UpdateUI` /  
+`RequestPvP` / `PvPInvite` / `PvPAccepted` / `PvPResult` /  
+`SynthesizeCat` / `SynthesisResult` / `UpdateFragments`
+
+RemoteFunction：`GetPlayerData` / `GetShopCatalog`
+
+---
+
+## 七、每次修改後的強制步驟
+
+1. **更新 `GAME_DESIGN.md`** 的「系統實作狀態總覽」與「變更日誌」
+2. 標記功能狀態：✅ 完成 / ⚠️ 部分 / ❌ 未做
+3. `git add . && git commit -m "..."` → `git push`
+
+---
+
+## 八、待完成功能（已知 ⚠️ 項目）
+
+### 8.1 貓咪選擇面板 UI
+- **現狀：** 商城貓咪 tab 只有購買按鈕，已擁有貓咪顯示「✓ 已擁有」但無法切換
+- **需要：** 已擁有的貓咪顯示「切換使用」按鈕，點擊後呼叫 `SelectCat:FireServer(catId)`
+- **相關檔案：** `src/client/UIManager.lua`（`showCatsTab` 函式）
+
+### 8.2 PvP 發起挑戰 UI
+- **現狀：** 後端 PvPManager 完整，`PvPInvite` 邀請通知已接收，但玩家無法主動發起
+- **需要：** 在其他玩家附近時顯示「發起 PvP」按鈕，或在主 HUD 提供 PvP 入口
+- **相關事件：** `RequestPvP:FireServer(targetUserId)`
+- **相關檔案：** `src/client/UIManager.lua`、`src/client/GameClient.client.lua`
