@@ -402,7 +402,7 @@ function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	end
 	
 	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://9120386436", vfxPos, 0.7)  -- 爪擊聲
+	playOneShotSound("rbxassetid://131961136", vfxPos, 0.7)  -- 爪擊聲
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -446,7 +446,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playOneShotSound("rbxassetid://3735379497", position, isCrit and 1 or 0.8)  -- 打擊音效
+	playOneShotSound("rbxassetid://131961136", position, isCrit and 1 or 0.8)  -- 打擊音效
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,
@@ -796,7 +796,7 @@ local function playDropCoins(pos: Vector3, amount: number)
 	end)
 
 	-- 金幣音效（輕盈的叮叮聲）
-	playOneShotSound("rbxassetid://9120386436", pos, 0.9)  -- 金幣音效（爽脆）
+	playOneShotSound("rbxassetid://267401236", pos, 0.9)  -- 金幣音效（爽脆）
 end
 
 -- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
@@ -888,7 +888,7 @@ local function playDropFragment(pos: Vector3, catId: string)
 	end)
 
 	-- 碎片音效（神秘晶體聲）
-	playOneShotSound("rbxassetid://3735379497", pos, 1.0)  -- 碎片音效
+	playOneShotSound("rbxassetid://178452217", pos, 1.0)  -- 碎片音效
 end
 
 -- 處理 NPCDrops 事件
