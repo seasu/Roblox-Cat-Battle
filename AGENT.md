@@ -1,12 +1,12 @@
 # 🏚️ Poor Man's Agent Team (P.M.A.T.) - Project Brain (貓咪大戰)
 
 ## 📍 1. 當前會話快照 (Context Snapshot)
-> **STATUS:** 任務進行中 - 已實作版本管理。
-- **Version:** `v0.1.6`
+> **STATUS:** 任務進行中 - v0.1.6 修復完成。
+- **Version:** `v0.1.7`
 - **Last Sync:** 2026-05-04
 - **Battery Level:** 🟢 [電量充足]
 - **Project Goal:** 打造一款高品質的 Roblox 貓咪戰鬥 RPG 遊戲，具備完整的數值系統、裝備系統與 PvP/PvE 玩法。
-- **Current Task:** 已修復 iOS 觸控無法觸發攻擊動畫的問題。改用 InputBegan 統一處理 Mouse/Touch，並解決移動端 GetMouse() 定位不準確的缺陷。
+- **Current Task:** 已修復攻擊動畫不觸發的問題，並實作貓咪四足走路前傾姿勢優化。
 - **Next Step:** 根據 `PRD.md` 與 `GAME_DESIGN.md` 開始開發核心系統。
 
 ---
