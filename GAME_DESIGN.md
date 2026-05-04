@@ -1,5 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
+> **Current Version:** `v0.1.1`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---

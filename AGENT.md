@@ -1,7 +1,8 @@
 # 🏚️ Poor Man's Agent Team (P.M.A.T.) - Project Brain (貓咪大戰)
 
 ## 📍 1. 當前會話快照 (Context Snapshot)
-> **STATUS:** 任務進行中 - PMAT 框架遷移完成。
+> **STATUS:** 任務進行中 - 已實作版本管理。
+- **Version:** `v0.1.1`
 - **Last Sync:** 2026-05-04
 - **Battery Level:** 🟢 [電量充足]
 - **Project Goal:** 打造一款高品質的 Roblox 貓咪戰鬥 RPG 遊戲，具備完整的數值系統、裝備系統與 PvP/PvE 玩法。
