@@ -78,10 +78,65 @@ function UIManager.init(playerData: any)
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	-- XP 條底框
+	-- ── 左上角 HUD（固定像素高度，避免 scale 在手機端造成文字溢出重疊）──
+	local hudBg = createFrame(screenGui,
+		UDim2.new(0, 6, 0, 6),
+		UDim2.new(0.27, 0, 0, 66),
+		Color3.fromRGB(0, 0, 0), 0.45)
+	hudBg.ZIndex = 2
+	local hudCorner = Instance.new("UICorner")
+	hudCorner.CornerRadius = UDim.new(0, 6)
+	hudCorner.Parent = hudBg
+	local hudPad = Instance.new("UIPadding")
+	hudPad.PaddingLeft   = UDim.new(0, 8)
+	hudPad.PaddingRight  = UDim.new(0, 10)
+	hudPad.PaddingTop    = UDim.new(0, 6)
+	hudPad.PaddingBottom = UDim.new(0, 6)
+	hudPad.Parent = hudBg
+
+	-- 金幣：固定 28px 高，文字不會溢出
+	coinLabel = Instance.new("TextLabel")
+	coinLabel.Text = "金幣: 0"
+	coinLabel.Position = UDim2.new(0, 0, 0, 0)
+	coinLabel.Size = UDim2.new(1, 0, 0, 28)
+	coinLabel.AnchorPoint = Vector2.new(0, 0)
+	coinLabel.BackgroundTransparency = 1
+	coinLabel.TextColor3 = Color3.new(1, 1, 1)
+	coinLabel.TextStrokeTransparency = 0.5
+	coinLabel.Font = Enum.Font.GothamBold
+	coinLabel.TextSize = 18
+	coinLabel.TextScaled = false
+	coinLabel.TextXAlignment = Enum.TextXAlignment.Left
+	coinLabel.ZIndex = 3
+	coinLabel.Parent = hudBg
+
+	-- 分隔線（讓兩行視覺上有明確間距）
+	local divider = createFrame(hudBg,
+		UDim2.new(0, 0, 0, 32),
+		UDim2.new(1, 0, 0, 2),
+		Color3.fromRGB(255, 255, 255), 0.85)
+	divider.ZIndex = 3
+
+	-- 貓咪名稱：固定 26px 高，第 36px 起
+	catLabel = Instance.new("TextLabel")
+	catLabel.Text = "白貓 — 幼貓"
+	catLabel.Position = UDim2.new(0, 0, 0, 36)
+	catLabel.Size = UDim2.new(1, 0, 0, 26)
+	catLabel.AnchorPoint = Vector2.new(0, 0)
+	catLabel.BackgroundTransparency = 1
+	catLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+	catLabel.TextStrokeTransparency = 0.5
+	catLabel.Font = Enum.Font.Gotham
+	catLabel.TextSize = 14
+	catLabel.TextScaled = false
+	catLabel.TextXAlignment = Enum.TextXAlignment.Left
+	catLabel.ZIndex = 3
+	catLabel.Parent = hudBg
+
+	-- ── XP 條與等級（level label 移至 Y=0.905 避開技能列 Y=0.82~0.89）──
 	local xpBg = createFrame(screenGui,
-		UDim2.new(0.3, 0, 0.93, 0),
-		UDim2.new(0.4, 0, 0.04, 0),
+		UDim2.new(0.3, 0, 0.945, 0),
+		UDim2.new(0.4, 0, 0.038, 0),
 		Color3.fromRGB(30, 30, 30), 0.3)
 
 	xpFill = createFrame(xpBg,
@@ -91,18 +146,11 @@ function UIManager.init(playerData: any)
 
 	xpBar = xpBg
 
+	-- 等級標籤：X=0.30~0.40，介於裝備和PvP按鈕之間，Y=0.900 在技能列（~0.89）之下
 	levelLabel = createLabel(screenGui, "Lv.1",
-		UDim2.new(0.3, 0, 0.88, 0),
-		UDim2.new(0.1, 0, 0.04, 0), 22)
+		UDim2.new(0.3, 0, 0.900, 0),
+		UDim2.new(0.1, 0, 0.040, 0), 22)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
-
-	coinLabel = createLabel(screenGui, "金幣: 0",
-		UDim2.new(0.01, 0, 0.01, 0),
-		UDim2.new(0.2, 0, 0.04, 0), 18)
-
-	catLabel = createLabel(screenGui, "白貓 — 幼貓",
-		UDim2.new(0.01, 0, 0.06, 0),
-		UDim2.new(0.25, 0, 0.04, 0), 16)
 
 	-- 浮動通知
 	toastLabel = createLabel(screenGui, "",
