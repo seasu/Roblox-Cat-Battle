@@ -468,35 +468,87 @@ function CombatClient.onNPCDied(instanceId: string)
 end
 
 -- ── 攻擊揮手動畫 ─────────────────────────────────────────────────
--- 找出手臂的 Motor6D (肩部關節)
+-- 找出手臂的 Motor6D (肩部關節)，優先尋找最上層關節以帶動整個手臂
 local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	local sidePattern = (side == "Right") and "Right" or "Left"
+	local candidates = {}
 	
-	-- 優先透過 Part1 定位（尋找 Part1 為手臂部位的 Motor6D）
 	for _, m in ipairs(char:GetDescendants()) do
 		if m:IsA("Motor6D") and m.Part1 then
 			local p1Name = m.Part1.Name
-			if string.find(p1Name, sidePattern) and (string.find(p1Name, "Arm") or string.find(p1Name, "Hand") or string.find(p1Name, "Paw")) then
-				return m
-			end
-		end
-	end
-	
-	-- 次要：透過 Motor6D 本身名稱定位
-	for _, m in ipairs(char:GetDescendants()) do
-		if m:IsA("Motor6D") then
 			local mName = m.Name
-			if string.find(mName, sidePattern) and (string.find(mName, "Shoulder") or string.find(mName, "Arm")) then
-				return m
+			if string.find(p1Name, sidePattern) or string.find(mName, sidePattern) then
+				table.insert(candidates, m)
 			end
 		end
 	end
 	
-	return nil
+	-- 優先級 1：名稱包含 Shoulder (R6/R15 常見)
+	for _, m in ipairs(candidates) do
+		if string.find(m.Name, "Shoulder") then return m end
+	end
+	
+	-- 優先級 2：Part1 包含 Arm/Paw 且排除 Lower/Hand (確保是上臂)
+	for _, m in ipairs(candidates) do
+		local p1 = m.Part1.Name
+		if (string.find(p1, "Arm") or string.find(p1, "Paw")) 
+			and not string.find(p1, "Lower") 
+			and not string.find(p1, "Hand") then
+			return m
+		end
+	end
+	
+	return candidates[1]
+end
+
+-- ── 貓咪走路姿勢優化 (四足俯衝感) ──────────────────────────────────
+-- 透過旋轉 RootJoint 讓貓咪在移動時身體前傾，更像四足動物行走
+local function setupCatWalkTilt()
+	local currentConnection: RBXScriptConnection? = nil
+
+	local function onCharacter(char: Model)
+		if currentConnection then currentConnection:Disconnect() end
+		
+		local hum = char:WaitForChild("Humanoid") :: Humanoid
+		local rootMotor: Motor6D? = nil
+
+		local function findRootMotor()
+			for _, m in ipairs(char:GetDescendants()) do
+				if m:IsA("Motor6D") and m.Part0 and m.Part0.Name == "HumanoidRootPart" then
+					return m
+				end
+			end
+			return nil
+		end
+
+		currentConnection = RunService.RenderStepped:Connect(function()
+			if not char.Parent or not hum.Parent then
+				if currentConnection then currentConnection:Disconnect() end
+				return
+			end
+			
+			if not rootMotor or not rootMotor.Parent then
+				rootMotor = findRootMotor()
+				if not rootMotor then return end
+			end
+
+			local moveDir = hum.MoveDirection
+			local isMoving = moveDir.Magnitude > 0.1
+			
+			-- 目標前傾角度：移動時 40 度左右 (math.pi/4.5)，靜止時 0 度
+			local targetAngle = isMoving and (math.pi / 4.5) or 0
+			local currentCF = rootMotor.Transform
+			local targetCF = CFrame.Angles(targetAngle, 0, 0)
+			
+			rootMotor.Transform = currentCF:Lerp(targetCF, 0.15)
+		end)
+	end
+
+	if localPlayer.Character then onCharacter(localPlayer.Character) end
+	localPlayer.CharacterAdded:Connect(onCharacter)
 end
 
 -- 揮手動畫：使用 RenderStepped 並在每一幀強制「覆寫」Transform。
--- 站在原地沒動時手不動，通常是因為 Idle 動畫的權限較高或在每一幀重置了 Transform。
 local swingActive = false
 local function playSwingAnimation(swingAngle: number, duration: number)
 	if swingActive then return end
@@ -531,7 +583,8 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			alpha = math.cos(backT * math.pi / 2) -- 平滑收回
 		end
 
-		-- 強制覆寫
+		-- 強制覆寫。注意：若有 setupCatWalkTilt，這會與其競爭 Transform。
+		-- 但因為這裡是揮手動畫，通常只影響手臂，而 CatWalkTilt 影響軀幹，所以不衝突。
 		motor.Transform = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
 	end)
 end
@@ -804,6 +857,9 @@ function CombatClient.playDeathAnimation()
 end
 
 function CombatClient.init()
+	-- 啟動貓咪走路姿勢優化
+	task.spawn(setupCatWalkTilt)
+
 	-- 監聽 NPC 掉落（金幣 + 碎片動畫）
 	local npcDropsEvent = remoteEvents:WaitForChild("NPCDrops") :: RemoteEvent
 	npcDropsEvent.OnClientEvent:Connect(function(
