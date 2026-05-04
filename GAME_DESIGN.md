@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.1.8`
+> **Current Version:** `v0.2.6`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,13 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.2.6）
+- **預設白貓外觀修正**：移除 `CatManager.lua` 舊版 `applyBasicCatVisual`（人形上色＋耳尾）流程，改為統一呼叫 `CatAppearance.apply`，避免角色被覆蓋回類人外觀，確保主角預設為完整白貓造型。
+- **白貓體態調整**：`CatAppearance.lua` 將身體改為長橢圓軀幹、頭部前移下壓、前後肢與尾巴掛點重調，降低直立感，剪影更接近四足貓。
+- **走路動作修正**：`CombatClient.lua` 修正 `swingActive` 作用域，並提高四足步態前傾與對角步幅，待機也維持低趴姿，移動時不再像站立行走。
+- **修改檔案**：`src/server/CatManager.lua`、`src/server/CatAppearance.lua`、`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：貓咪外觀（全身替換）✅、基礎攻擊 / 點擊 NPC（前端步態表現）✅
 
 ### 2026-05-04（v0.1.8）
 - **背包系統**：新增 `ownedItems` 欄位，裝備永久持有；🎒 背包面板管理穿戴/卸下；商城裝備 tab 改為純購買
