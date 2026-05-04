@@ -87,7 +87,7 @@ function ShopManager.handleCoinPurchase(player: Player, itemId: string)
 	remotes:WaitForChild("UpdateUI"):FireClient(player, "coins", -item.price)
 end
 
--- 購買裝備（金幣）並同時裝備上去
+-- 購買裝備（金幣）：加入 ownedItems，不強制自動裝備
 function ShopManager.handleBuyEquipment(player: Player, itemId: string)
 	local data = DataStore.getData(player)
 	if not data then return end
@@ -97,6 +97,14 @@ function ShopManager.handleBuyEquipment(player: Player, itemId: string)
 		purchaseResultEvent:FireClient(player, false, "無效的裝備 ID。")
 		return
 	end
+
+	-- 確保 ownedItems 欄位存在（舊存檔相容）
+	if not data.ownedItems then data.ownedItems = {} end
+
+	if data.ownedItems[itemId] then
+		purchaseResultEvent:FireClient(player, false, "你已擁有「" .. item.displayName .. "」！")
+		return
+	end
 	if data.coins < item.price then
 		purchaseResultEvent:FireClient(player, false,
 			"金幣不足！需要 " .. item.price .. " 金幣，目前只有 " .. data.coins .. " 金幣。")
@@ -104,12 +112,12 @@ function ShopManager.handleBuyEquipment(player: Player, itemId: string)
 	end
 
 	data.coins -= item.price
-	data.equipment[item.slot] = itemId
+	data.ownedItems[itemId] = true
 
 	local remotes = game.ReplicatedStorage:WaitForChild("RemoteEvents")
-	remotes:WaitForChild("EquipmentChanged"):FireClient(player, data.equipment)
 	remotes:WaitForChild("UpdateUI"):FireClient(player, "coins", -item.price)
-	purchaseResultEvent:FireClient(player, true, "已裝備「" .. item.displayName .. "」！")
+	remotes:WaitForChild("OwnedItemsChanged"):FireClient(player, data.ownedItems, data.equipment)
+	purchaseResultEvent:FireClient(player, true, "成功購買「" .. item.displayName .. "」！前往背包裝備。")
 end
 
 function ShopManager.getCatalog()

@@ -170,10 +170,8 @@ getEvent("PurchaseCat").OnServerEvent:Connect(function(player: Player, catId: st
 end)
 
 getEvent("BuyEquipment").OnServerEvent:Connect(function(player: Player, itemId: string)
+	-- 購買只加入 ownedItems，不自動裝備（外觀不變）
 	ShopManager.handleBuyEquipment(player, itemId)
-	-- 購買+裝備後，更新角色 3D 外觀
-	local loadout = EquipmentManager.getEquipmentLoadout(player)
-	EquipmentAppearance.apply(player, loadout)
 end)
 
 getEvent("SynthesizeCat").OnServerEvent:Connect(function(player: Player, catId: string)
@@ -203,4 +201,8 @@ end
 
 getFunction("GetShopCatalog").OnServerInvoke = function(_player: Player)
 	return ShopManager.getCatalog()
+end
+
+getFunction("GetOwnedItems").OnServerInvoke = function(player: Player)
+	return EquipmentManager.getOwnedItems(player)
 end

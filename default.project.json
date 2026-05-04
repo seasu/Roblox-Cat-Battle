@@ -51,6 +51,7 @@
         "PvPResult":           { "$className": "RemoteEvent" },
 
         "BuyEquipment":        { "$className": "RemoteEvent" },
+        "OwnedItemsChanged":   { "$className": "RemoteEvent" },
         "SynthesizeCat":       { "$className": "RemoteEvent" },
         "SynthesisResult":     { "$className": "RemoteEvent" },
         "UpdateFragments":     { "$className": "RemoteEvent" }
@@ -59,7 +60,8 @@
       "RemoteFunctions": {
         "$className": "Folder",
         "GetPlayerData":   { "$className": "RemoteFunction" },
-        "GetShopCatalog":  { "$className": "RemoteFunction" }
+        "GetShopCatalog":  { "$className": "RemoteFunction" },
+        "GetOwnedItems":   { "$className": "RemoteFunction" }
       }
     }
   }

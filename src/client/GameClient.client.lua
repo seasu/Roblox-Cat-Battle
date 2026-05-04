@@ -68,6 +68,12 @@ getEvent("EquipmentChanged").OnClientEvent:Connect(function(loadout: any)
 	CombatClient.currentWeapon = loadout and loadout.weapon or nil
 end)
 
+-- ── 擁有物品變更（購買後通知）─────────────────────────────────────
+getEvent("OwnedItemsChanged").OnClientEvent:Connect(function(_ownedItems: any, _loadout: any)
+	-- 購買成功時顯示提示，背包資料由面板開啟時重新從伺服器拉取
+	UIManager.showToast("購買成功！前往🎒背包裝備", Color3.fromRGB(100, 220, 140))
+end)
+
 -- ── 碎片掉落 ─────────────────────────────────────────────────────
 getEvent("UpdateFragments").OnClientEvent:Connect(function(catId: string, count: number)
 	UIManager.updateFragments(catId, count)
