@@ -143,6 +143,14 @@
 
 ## 變更日誌
 
+### 2026-05-04（第八批）
+- **商城 UI 格狀化**：`openShopPanel` 全面重寫，改用 UIGridLayout 格狀圖示卡片（4欄）
+  - 格狀卡片：大 Emoji 圖示 + 名稱 + 底部狀態徽章（顏色區分使用中/已擁有/未擁有）
+  - 點擊卡片彈出詳情 popup（大圖示 + 說明 + 數值 + 確認按鈕）
+  - 合成 tab：popup 內顯示碎片進度條
+  - 已移除舊的行式 buildCard，改為 buildIconCard + showDetailPopup
+- **修改檔案**：`src/client/UIManager.lua`
+
 ### 2026-05-04（第七批）
 - **裝備 3D 外觀**：新增 `EquipmentAppearance.lua`，依裝備槽在角色模型上附加 WeldConstraint 配件
   - 項圈：collarBasic（棕色帶）、collarSpike（黑帶+三尖刺）、collarHeal（綠色 Neon 帶+寶石）、collarSpeed（白色細帶+雙翼）
