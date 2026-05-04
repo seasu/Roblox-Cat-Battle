@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.2.6`
+> **Current Version:** `v0.2.9`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,27 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.2.9）
+- **美術方向調整**：角色由「真貓趴姿」改為「擬人化貓咪」；保留貓耳、貓尾、貓臉特徵，回到站立可戰鬥輪廓。
+- **擬人貓體態重構**：`CatAppearance.lua` 調整為直立胸軀、擬人手臂與短腿，取消前爪壓地配置，讓造型更符合動作 RPG 主角感。
+- **攻擊動作劍客化**：`CombatClient.lua` 攻擊動畫改成三段式「蓄力收手 → 爆發突刺斬 → 俐落收招」，並加入 yaw/roll 側切，風格更接近《鞋貓劍客》式劍客手感。
+- **技能揮擊參數重調**：`SKILL_SWING` 各技能角度與時間同步更新，降低怪異抖動感並提升節奏一致性。
+- **修改檔案**：`src/server/CatAppearance.lua`、`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：貓咪外觀（全身替換）✅、基礎攻擊 / 點擊 NPC（前端步態與動作表現）✅
+
+### 2026-05-04（v0.2.8）
+- **趴姿強化**：`CatAppearance.lua` 進一步壓低軀幹與頭部掛點，身體改更扁長，整體姿態由站立感調整為低伏趴姿。
+- **腳更短、前爪貼地**：前後肢長度縮短，前爪改為扁平肉球並下壓到貼地位置，明顯呈現「手壓在地上」的四足貓外觀。
+- **步態低伏化**：`CombatClient.lua` 將待機/移動俯身角改為負角度前俯，並重調前後肢擺動基準，降低直立走路感。
+- **修改檔案**：`src/server/CatAppearance.lua`、`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：貓咪外觀（全身替換）✅、基礎攻擊 / 點擊 NPC（前端步態表現）✅
+
+### 2026-05-04（v0.2.7）
+- **攻擊音效觸發修正**：`CombatClient.lua` 移除 `attemptBasicAttack` 的點擊即時播音，改為在 `CombatHit`（命中回饋）顯示傷害數字時才播放 `SFX.attack`，避免空點畫面反覆出聲。
+- **爆音保護**：新增命中音效節流（0.08s），降低 AoE 同幀多目標命中時的重疊爆音。
+- **修改檔案**：`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：基礎攻擊 / 點擊 NPC（音效觸發）✅
 
 ### 2026-05-04（v0.2.6）
 - **預設白貓外觀修正**：移除 `CatManager.lua` 舊版 `applyBasicCatVisual`（人形上色＋耳尾）流程，改為統一呼叫 `CatAppearance.apply`，避免角色被覆蓋回類人外觀，確保主角預設為完整白貓造型。
