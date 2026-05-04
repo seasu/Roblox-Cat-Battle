@@ -659,10 +659,9 @@ local function setupCatWalkTilt()
 				phase = phase * (1 - math.min(dt * 6, 1))
 			end
 
-			-- ── 軀幹前傾（RootJoint Transform）────────────────────────
-			-- 讓待機也保持低趴，移動時前傾更明顯，避免直立人形感
-			-- 注意：X 軸負角度代表身體前俯（頭朝地面）
-			local targetTilt = isMoving and math.rad(-34) or math.rad(-24)
+			-- ── 軀幹姿態（擬人貓）───────────────────────────────────
+			-- 回到直立擬人姿勢：移動時微微前傾，待機近直立
+			local targetTilt = isMoving and math.rad(6) or math.rad(2)
 			-- 快速平滑收斂（Lerp 係數 0.25，約 4 幀到位）
 			currentTilt = currentTilt + (targetTilt - currentTilt) * math.min(dt * 18, 1)
 			if rootMotor then
@@ -677,30 +676,29 @@ local function setupCatWalkTilt()
 			local sR  = math.sin(phase) * moveBlend         -- 右前相位
 			local sL  = math.sin(phase + math.pi) * moveBlend  -- 左前反相
 
-			-- 前肢（手臂）：大幅前後擺，攻擊時讓出
+			-- 前肢（手臂）：擬人走路擺手，攻擊時讓出
 			if not swingActive then
 				if armR then
-					-- 移動：對角擺動 + 基礎前探；靜止：低趴待機
-					local targetR = isMoving and CFrame.Angles(-0.62 - sR * 1.05, 0, 0)
-						or CFrame.Angles(-0.68, 0, 0)
+					local targetR = isMoving and CFrame.Angles(-sR * 0.95, 0, 0)
+						or CFrame.Angles(0.06, 0, 0)
 					armR.Transform = armR.Transform:Lerp(targetR, limbLerp)
 				end
 				if armL then
-					local targetL = isMoving and CFrame.Angles(-0.62 - sL * 1.05, 0, 0)
-						or CFrame.Angles(-0.68, 0, 0)
+					local targetL = isMoving and CFrame.Angles(-sL * 0.95, 0, 0)
+						or CFrame.Angles(0.06, 0, 0)
 					armL.Transform = armL.Transform:Lerp(targetL, limbLerp)
 				end
 			end
 
-			-- 後肢（腿）：與對側前肢反相
+			-- 後肢（腿）：直立步態
 			if legR then
-				local targetLR = isMoving and CFrame.Angles(-0.18 + sL * 0.80, 0, 0)
-					or CFrame.Angles(-0.18, 0, 0)
+				local targetLR = isMoving and CFrame.Angles(sL * 0.90, 0, 0)
+					or CFrame.Angles(0.04, 0, 0)
 				legR.Transform = legR.Transform:Lerp(targetLR, limbLerp)
 			end
 			if legL then
-				local targetLL = isMoving and CFrame.Angles(-0.18 + sR * 0.80, 0, 0)
-					or CFrame.Angles(-0.18, 0, 0)
+				local targetLL = isMoving and CFrame.Angles(sR * 0.90, 0, 0)
+					or CFrame.Angles(0.04, 0, 0)
 				legL.Transform = legL.Transform:Lerp(targetLL, limbLerp)
 			end
 		end)
@@ -737,31 +735,45 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			return
 		end
 
-		-- 動作曲線：快速揮出（前 20%） → 停頓打擊感（20-30%） → 平滑收回（30-100%）
-		local alpha = 0
-		if t < 0.2 then
-			alpha = (t / 0.2) ^ 2
-		elseif t < 0.3 then
-			alpha = 1
+		-- 劍客式三段動作：
+		-- 1) 蓄力收手（前 26%） 2) 爆發突刺斬（26-58%） 3) 俐落收招（58-100%）
+		local pitch = 0
+		local yaw = 0
+		local roll = 0
+		if t < 0.26 then
+			local p = t / 0.26
+			local ease = p * p
+			pitch = 0.46 * ease
+			yaw = -0.26 * ease
+			roll = -0.16 * ease
+		elseif t < 0.58 then
+			local p = (t - 0.26) / 0.32
+			local ease = 1 - (1 - p) * (1 - p)
+			pitch = 0.46 + (swingAngle - 0.46) * ease
+			yaw = -0.26 + 0.44 * ease
+			roll = -0.16 + 0.48 * ease
 		else
-			local backT = (t - 0.3) / 0.7
-			alpha = math.cos(backT * math.pi / 2)
+			local p = (t - 0.58) / 0.42
+			local ease = math.sin(math.clamp(p, 0, 1) * math.pi * 0.5)
+			pitch = swingAngle * (1 - ease)
+			yaw = 0.18 * (1 - ease)
+			roll = 0.32 * (1 - ease)
 		end
 
-		motor.Transform = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
+		motor.Transform = CFrame.Angles(pitch, yaw, roll)
 	end)
 end
 
 -- 依技能決定揮動參數
 local SKILL_SWING: { [string]: { angle: number, duration: number } } = {
-	BasicSwipe      = { angle = -1.4, duration = 0.28 },
-	PowerClaw       = { angle = -1.7, duration = 0.35 },
-	ShadowStrike    = { angle = -1.9, duration = 0.25 },
-	FireClaw        = { angle = -1.5, duration = 0.32 },
-	GentlemanStrike = { angle = -2.0, duration = 0.30 },
-	FoodRage        = { angle = -1.8, duration = 0.30 },
-	PetalSlash      = { angle = -1.4, duration = 0.28 },
-	ThunderPounce   = { angle = -1.9, duration = 0.30 },
+	BasicSwipe      = { angle = -1.25, duration = 0.34 },
+	PowerClaw       = { angle = -1.55, duration = 0.38 },
+	ShadowStrike    = { angle = -1.70, duration = 0.30 },
+	FireClaw        = { angle = -1.38, duration = 0.36 },
+	GentlemanStrike = { angle = -1.82, duration = 0.32 },
+	FoodRage        = { angle = -1.62, duration = 0.33 },
+	PetalSlash      = { angle = -1.30, duration = 0.34 },
+	ThunderPounce   = { angle = -1.72, duration = 0.33 },
 }
 
 -- 雙手揮動（AoE 技能用）
