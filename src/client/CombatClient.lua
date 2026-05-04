@@ -505,42 +505,109 @@ end
 -- 透過旋轉 RootJoint 讓貓咪在移動時身體前傾，更像四足動物行走
 local function setupCatWalkTilt()
 	local currentConnection: RBXScriptConnection? = nil
+	local phase = 0
 
 	local function onCharacter(char: Model)
 		if currentConnection then currentConnection:Disconnect() end
-		
+
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
 		local rootMotor: Motor6D? = nil
+		local armR: Motor6D? = nil
+		local armL: Motor6D? = nil
+		local legR: Motor6D? = nil
+		local legL: Motor6D? = nil
 
-		local function findRootMotor()
+		local function findMotors()
+			rootMotor = nil; armR = nil; armL = nil; legR = nil; legL = nil
 			for _, m in ipairs(char:GetDescendants()) do
-				if m:IsA("Motor6D") and m.Part0 and m.Part0.Name == "HumanoidRootPart" then
-					return m
+				if not m:IsA("Motor6D") then continue end
+				local mn  = m.Name
+				local p0n = m.Part0 and m.Part0.Name or ""
+				local p1n = m.Part1 and m.Part1.Name or ""
+				-- 軀幹根關節
+				if p0n == "HumanoidRootPart" then
+					rootMotor = m
+				end
+				-- 右肩（前右腿）
+				if not armR and string.find(mn, "Right") and string.find(mn, "Shoulder") then
+					armR = m
+				elseif not armR and string.find(p1n, "Right") and
+					(string.find(p1n, "UpperArm") or p1n == "Right Arm") then
+					armR = m
+				end
+				-- 左肩（前左腿）
+				if not armL and string.find(mn, "Left") and string.find(mn, "Shoulder") then
+					armL = m
+				elseif not armL and string.find(p1n, "Left") and
+					(string.find(p1n, "UpperArm") or p1n == "Left Arm") then
+					armL = m
+				end
+				-- 右髖（後右腿）
+				if not legR and string.find(mn, "Right") and string.find(mn, "Hip") then
+					legR = m
+				elseif not legR and string.find(p1n, "Right") and
+					(string.find(p1n, "UpperLeg") or p1n == "Right Leg") then
+					legR = m
+				end
+				-- 左髖（後左腿）
+				if not legL and string.find(mn, "Left") and string.find(mn, "Hip") then
+					legL = m
+				elseif not legL and string.find(p1n, "Left") and
+					(string.find(p1n, "UpperLeg") or p1n == "Left Leg") then
+					legL = m
 				end
 			end
-			return nil
 		end
+
+		findMotors()
+		local lastTime = os.clock()
 
 		currentConnection = RunService.RenderStepped:Connect(function()
 			if not char.Parent or not hum.Parent then
 				if currentConnection then currentConnection:Disconnect() end
 				return
 			end
-			
 			if not rootMotor or not rootMotor.Parent then
-				rootMotor = findRootMotor()
+				findMotors()
 				if not rootMotor then return end
 			end
 
-			local moveDir = hum.MoveDirection
-			local isMoving = moveDir.Magnitude > 0.1
-			
-			-- 目標前傾角度：移動時 40 度左右 (math.pi/4.5)，靜止時 0 度
-			local targetAngle = isMoving and (math.pi / 4.5) or 0
-			local currentCF = rootMotor.Transform
-			local targetCF = CFrame.Angles(targetAngle, 0, 0)
-			
-			rootMotor.Transform = currentCF:Lerp(targetCF, 0.15)
+			local now = os.clock()
+			local dt  = math.min(now - lastTime, 0.05)
+			lastTime   = now
+
+			local isMoving = hum.MoveDirection.Magnitude > 0.1
+
+			-- 跑步時推進步態相位（速度正比於 WalkSpeed）
+			if isMoving then
+				phase = (phase + dt * (hum.WalkSpeed / 16) * 7.0) % (math.pi * 2)
+			end
+
+			-- ── 軀幹前傾：移動時 ~65°，靜止時 ~14°（維持貓科蹲伏感）
+			local targetTilt = isMoving and (math.pi * 0.36) or (math.pi * 0.078)
+			rootMotor.Transform = rootMotor.Transform:Lerp(CFrame.Angles(targetTilt, 0, 0), 0.13)
+
+			-- ── 四肢步態：對角步態（右前＋左後同相，左前＋右後反相）
+			-- 攻擊揮手動畫在後連接的 RenderStepped 中執行，自然覆蓋此處設定值
+			local swingAmp  = isMoving and 1.0 or 0.0
+			local lerpSpeed = isMoving and 1.0 or 0.08
+			local sR = math.sin(phase) * swingAmp        -- 右前相位
+			local sL = math.sin(phase + math.pi) * swingAmp  -- 左前相位（反相）
+
+			-- 前肢（手臂）：前後大幅擺動模擬前爪觸地蹬離
+			if armR then
+				armR.Transform = armR.Transform:Lerp(CFrame.Angles(-sR * 1.15, 0, 0), lerpSpeed)
+			end
+			if armL then
+				armL.Transform = armL.Transform:Lerp(CFrame.Angles(-sL * 1.15, 0, 0), lerpSpeed)
+			end
+			-- 後肢（腿）：與對側前肢反相，幅度略小
+			if legR then
+				legR.Transform = legR.Transform:Lerp(CFrame.Angles(sL * 0.65, 0, 0), lerpSpeed)
+			end
+			if legL then
+				legL.Transform = legL.Transform:Lerp(CFrame.Angles(sR * 0.65, 0, 0), lerpSpeed)
+			end
 		end)
 	end
 
