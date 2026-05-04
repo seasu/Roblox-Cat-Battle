@@ -554,6 +554,10 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	return candidates[1]
 end
 
+-- 揮手動畫狀態（必須在步態系統前宣告，供步態判斷攻擊中讓出前肢控制）
+local swingActive = false
+local swingConnection: RBXScriptConnection? = nil
+
 -- ── 貓咪走路姿勢優化 (四足俯衝感) ──────────────────────────────────
 -- 透過旋轉 RootJoint 讓貓咪在移動時身體前傾，更像四足動物行走
 local function setupCatWalkTilt()
@@ -650,8 +654,8 @@ local function setupCatWalkTilt()
 			end
 
 			-- ── 軀幹前傾（RootJoint Transform）────────────────────────
-			-- 貓咪走路時軀幹前傾 ~35°，靜止蹲伏 ~12°
-			local targetTilt = isMoving and (math.pi * 0.19) or (math.pi * 0.065)
+			-- 讓待機也保持低趴，移動時前傾更明顯，避免直立人形感
+			local targetTilt = isMoving and math.rad(28) or math.rad(16)
 			-- 快速平滑收斂（Lerp 係數 0.25，約 4 幀到位）
 			currentTilt = currentTilt + (targetTilt - currentTilt) * math.min(dt * 18, 1)
 			if rootMotor then
@@ -660,7 +664,7 @@ local function setupCatWalkTilt()
 
 			-- ── 四肢對角步態 ──────────────────────────────────────────
 			-- 移動時全幅擺動；靜止時平滑歸零（前肢微前傾待機）
-			local moveBlend  = math.min(speed / 4, 1)  -- 0(靜)→1(全速)
+			local moveBlend  = math.min(speed / 5, 1)  -- 0(靜)→1(全速)
 			local limbLerp   = isMoving and 0.35 or 0.12  -- 移動時快速跟上，靜止慢速歸位
 
 			local sR  = math.sin(phase) * moveBlend         -- 右前相位
@@ -669,27 +673,27 @@ local function setupCatWalkTilt()
 			-- 前肢（手臂）：大幅前後擺，攻擊時讓出
 			if not swingActive then
 				if armR then
-					-- 移動：對角擺動；靜止：微向前傾（蹲姿）
-					local targetR = isMoving and CFrame.Angles(-sR * 1.55, 0, 0)
-						or CFrame.Angles(0.22, 0, 0)
+					-- 移動：對角擺動 + 基礎前探；靜止：低趴待機
+					local targetR = isMoving and CFrame.Angles(0.35 - sR * 1.30, 0, 0)
+						or CFrame.Angles(0.38, 0, 0)
 					armR.Transform = armR.Transform:Lerp(targetR, limbLerp)
 				end
 				if armL then
-					local targetL = isMoving and CFrame.Angles(-sL * 1.55, 0, 0)
-						or CFrame.Angles(0.22, 0, 0)
+					local targetL = isMoving and CFrame.Angles(0.35 - sL * 1.30, 0, 0)
+						or CFrame.Angles(0.38, 0, 0)
 					armL.Transform = armL.Transform:Lerp(targetL, limbLerp)
 				end
 			end
 
 			-- 後肢（腿）：與對側前肢反相
 			if legR then
-				local targetLR = isMoving and CFrame.Angles(sL * 1.10, 0, 0)
-					or CFrame.Angles(0.15, 0, 0)
+				local targetLR = isMoving and CFrame.Angles(0.25 + sL * 1.00, 0, 0)
+					or CFrame.Angles(0.25, 0, 0)
 				legR.Transform = legR.Transform:Lerp(targetLR, limbLerp)
 			end
 			if legL then
-				local targetLL = isMoving and CFrame.Angles(sR * 1.10, 0, 0)
-					or CFrame.Angles(0.15, 0, 0)
+				local targetLL = isMoving and CFrame.Angles(0.25 + sR * 1.00, 0, 0)
+					or CFrame.Angles(0.25, 0, 0)
 				legL.Transform = legL.Transform:Lerp(targetLL, limbLerp)
 			end
 		end)
@@ -700,9 +704,6 @@ local function setupCatWalkTilt()
 end
 
 -- 揮手動畫：連打時強制重置，不累積 RenderStepped 連接
-local swingActive = false
-local swingConnection: RBXScriptConnection? = nil
-
 local function playSwingAnimation(swingAngle: number, duration: number)
 	local char = localPlayer.Character
 	if not char then return end
