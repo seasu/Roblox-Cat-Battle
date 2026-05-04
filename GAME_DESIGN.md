@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.2.7`
+> **Current Version:** `v0.2.8`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,13 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.2.8）
+- **趴姿強化**：`CatAppearance.lua` 進一步壓低軀幹與頭部掛點，身體改更扁長，整體姿態由站立感調整為低伏趴姿。
+- **腳更短、前爪貼地**：前後肢長度縮短，前爪改為扁平肉球並下壓到貼地位置，明顯呈現「手壓在地上」的四足貓外觀。
+- **步態低伏化**：`CombatClient.lua` 將待機/移動俯身角改為負角度前俯，並重調前後肢擺動基準，降低直立走路感。
+- **修改檔案**：`src/server/CatAppearance.lua`、`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：貓咪外觀（全身替換）✅、基礎攻擊 / 點擊 NPC（前端步態表現）✅
 
 ### 2026-05-04（v0.2.7）
 - **攻擊音效觸發修正**：`CombatClient.lua` 移除 `attemptBasicAttack` 的點擊即時播音，改為在 `CombatHit`（命中回饋）顯示傷害數字時才播放 `SFX.attack`，避免空點畫面反覆出聲。

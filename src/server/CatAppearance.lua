@@ -137,17 +137,17 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 
 	if not torso then return end
 
-	-- ── 身體（長橢圓躯幹，讓剪影更接近四足貓） ───────────────────────
-	local catBody = block("CatBody", Vector3.new(2.45, 1.8, 3.0), colors.body)
+	-- ── 身體（更低伏的長躯幹，強化趴姿） ────────────────────────────
+	local catBody = block("CatBody", Vector3.new(2.55, 1.45, 3.2), colors.body)
 	catBody.Parent = char
-	weld(torso, catBody, CFrame.new(0, -0.1, 0.1) * CFrame.Angles(math.rad(8), 0, 0))
+	weld(torso, catBody, CFrame.new(0, -0.45, 0.12) * CFrame.Angles(math.rad(14), 0, 0))
 
 	-- 白色肚腹（前方稍突出）
 	if colors.belly then
-		local belly = block("CatBelly", Vector3.new(1.75, 1.1, 1.5), colors.belly)
+		local belly = block("CatBelly", Vector3.new(1.85, 0.82, 1.65), colors.belly)
 		belly.Parent = char
 		-- 前方稍微突出，Y 微下移
-		weld(torso, belly, CFrame.new(0, -0.45, -0.75) * CFrame.Angles(math.rad(10), 0, 0))
+		weld(torso, belly, CFrame.new(0, -0.72, -0.76) * CFrame.Angles(math.rad(14), 0, 0))
 	end
 
 	-- ── 頭部（大球，焊在 Head Part） ─────────────────────────────
@@ -155,8 +155,8 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 		local headD = 2.4  -- chibi 大頭
 		local catHead = ball("CatHeadShape", headD, colors.body)
 		catHead.Parent = char
-		-- 頭部下壓並前推，形成四足姿態（不是人形直立）
-		weld(head, catHead, CFrame.new(0, -0.95, -0.55))
+		-- 頭部再下壓並前推，形成低伏趴姿（避免站立感）
+		weld(head, catHead, CFrame.new(0, -1.18, -0.82))
 
 		-- ── 眼睛（三層：眼白 → 虹膜(Neon) → 瞳孔 → 光點）
 		local HR = headD / 2  -- 1.2
@@ -222,8 +222,8 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 		end
 	end
 
-	-- ── 前肢（短胖圓柱感，焊在 Right/Left Arm） ─────────────────
-	local limbD, limbH = 0.72, 1.25
+	-- ── 前肢（更短，並讓前爪壓地）──────────────────────────────────
+	local limbD, limbH = 0.68, 0.90
 	for _, info in ipairs({
 		{ armR, "CatFrontLegR" },
 		{ armL, "CatFrontLegL" },
@@ -234,16 +234,16 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 			limb.Size  = Vector3.new(limbD, limbH, limbD)
 			limb.Shape = Enum.PartType.Block
 			limb.Parent = char
-			weld(anchor, limb, CFrame.new(0, -0.55, -0.40))
+			weld(anchor, limb, CFrame.new(0, -0.95, -0.58))
 
-			-- 爪子（圓球，末端）
-			local paw = ball(name.."Paw", limbD * 0.88, colors.body)
+			-- 前爪改成扁平肉球，視覺上更像壓在地面
+			local paw = block(name.."Paw", Vector3.new(0.75, 0.25, 0.80), colors.body)
 			paw.Parent = char
-			weld(anchor, paw, CFrame.new(0, -limbH/2 - 0.40, 0.16))
+			weld(anchor, paw, CFrame.new(0, -limbH/2 - 0.45, 0.23))
 		end
 	end
 
-	-- ── 後肢（焊在 Right/Left Leg）
+	-- ── 後肢（同樣縮短，保持貼地）──────────────────────────────────
 	for _, info in ipairs({
 		{ legR, "CatBackLegR" },
 		{ legL, "CatBackLegL" },
@@ -254,11 +254,11 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 			limb.Size  = Vector3.new(limbD, limbH, limbD)
 			limb.Shape = Enum.PartType.Block
 			limb.Parent = char
-			weld(anchor, limb, CFrame.new(0, -0.20, 0.12))
+			weld(anchor, limb, CFrame.new(0, -0.72, 0.05))
 
-			local paw = ball(name.."Paw", limbD * 0.88, colors.body)
+			local paw = block(name.."Paw", Vector3.new(0.72, 0.24, 0.76), colors.body)
 			paw.Parent = char
-			weld(anchor, paw, CFrame.new(0, -limbH/2 - 0.35, 0.08))
+			weld(anchor, paw, CFrame.new(0, -limbH/2 - 0.38, 0.10))
 		end
 	end
 
@@ -266,7 +266,7 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 	local tailColor = colors.tail or colors.body
 	local t1 = block("CatTail1", Vector3.new(0.30, 0.30, 1.30), tailColor)
 	t1.Parent = char
-	weld(torso, t1, CFrame.new(0, -0.55, 1.20) * CFrame.Angles(-0.55, 0, 0))
+	weld(torso, t1, CFrame.new(0, -0.72, 1.22) * CFrame.Angles(-0.48, 0, 0))
 
 	local t2 = block("CatTail2", Vector3.new(0.26, 1.50, 0.26), tailColor)
 	t2.Parent = char

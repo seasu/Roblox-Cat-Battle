@@ -661,7 +661,8 @@ local function setupCatWalkTilt()
 
 			-- ── 軀幹前傾（RootJoint Transform）────────────────────────
 			-- 讓待機也保持低趴，移動時前傾更明顯，避免直立人形感
-			local targetTilt = isMoving and math.rad(28) or math.rad(16)
+			-- 注意：X 軸負角度代表身體前俯（頭朝地面）
+			local targetTilt = isMoving and math.rad(-34) or math.rad(-24)
 			-- 快速平滑收斂（Lerp 係數 0.25，約 4 幀到位）
 			currentTilt = currentTilt + (targetTilt - currentTilt) * math.min(dt * 18, 1)
 			if rootMotor then
@@ -680,26 +681,26 @@ local function setupCatWalkTilt()
 			if not swingActive then
 				if armR then
 					-- 移動：對角擺動 + 基礎前探；靜止：低趴待機
-					local targetR = isMoving and CFrame.Angles(0.35 - sR * 1.30, 0, 0)
-						or CFrame.Angles(0.38, 0, 0)
+					local targetR = isMoving and CFrame.Angles(-0.62 - sR * 1.05, 0, 0)
+						or CFrame.Angles(-0.68, 0, 0)
 					armR.Transform = armR.Transform:Lerp(targetR, limbLerp)
 				end
 				if armL then
-					local targetL = isMoving and CFrame.Angles(0.35 - sL * 1.30, 0, 0)
-						or CFrame.Angles(0.38, 0, 0)
+					local targetL = isMoving and CFrame.Angles(-0.62 - sL * 1.05, 0, 0)
+						or CFrame.Angles(-0.68, 0, 0)
 					armL.Transform = armL.Transform:Lerp(targetL, limbLerp)
 				end
 			end
 
 			-- 後肢（腿）：與對側前肢反相
 			if legR then
-				local targetLR = isMoving and CFrame.Angles(0.25 + sL * 1.00, 0, 0)
-					or CFrame.Angles(0.25, 0, 0)
+				local targetLR = isMoving and CFrame.Angles(-0.18 + sL * 0.80, 0, 0)
+					or CFrame.Angles(-0.18, 0, 0)
 				legR.Transform = legR.Transform:Lerp(targetLR, limbLerp)
 			end
 			if legL then
-				local targetLL = isMoving and CFrame.Angles(0.25 + sR * 1.00, 0, 0)
-					or CFrame.Angles(0.25, 0, 0)
+				local targetLL = isMoving and CFrame.Angles(-0.18 + sR * 0.80, 0, 0)
+					or CFrame.Angles(-0.18, 0, 0)
 				legL.Transform = legL.Transform:Lerp(targetLL, limbLerp)
 			end
 		end)
