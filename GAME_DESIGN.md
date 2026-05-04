@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.1.5`
+> **Current Version:** `v0.1.8`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,17 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.1.8）
+- **背包系統**：新增 `ownedItems` 欄位，裝備永久持有；🎒 背包面板管理穿戴/卸下；商城裝備 tab 改為純購買
+- **選單按鈕右上角**：三按鈕（商城/背包/PvP）移至畫面右上角直排，不擋行動裝置方向鍵
+- **擊殺掉落動畫**：金幣拋物線飛散（3-8顆）+ 碎片晶體落地 + 音效
+- **四足步態衝突修正**：刪除重複的 CatLocomotion，setupCatWalkTilt 加 swingActive 守衛
+- **貓咪外觀大幅改進**：chibi 大頭（2.2）、四層大眼（光點）、口鼻腮紅、白色肚腹、短胖四肢、圓爪
+- **攻擊 Cooldown**：BasicSwipe 加 0.30s 整體 cooldown，修正連點音效放大/VFX 堆疊/攻擊失效
+- **音效修正**：替換所有無效 Asset ID；playOneShotSound 加 pcall 保護
+- **CombatClient nil 修正**：triggerSwingForSkill forward declaration 解決 1.6K 次報錯
+- **版本號升級**：全專案同步至 `v0.1.8`
 
 ### 2026-05-04（第十六批）
 - **動畫與姿勢優化 (v0.1.7)**：
