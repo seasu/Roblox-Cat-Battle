@@ -143,6 +143,12 @@
 
 ## 變更日誌
 
+### 2026-05-04（第九批）
+- **PMAT 框架遷移**：建立 `AGENT.md` (專案大腦) 與 `SKILLS/` 目錄，將部署邏輯模組化。
+- **NPC 重生修正**：在 `NPCManager.spawnNPC` 加入地面偵測 (Raycast)，解決玩家站立在重生點時 NPC 會飄在半空中的問題。
+- **攻擊動畫優化**：重構 `CombatClient.lua` 的 `playSwingAnimation`，採用 EaseIn/EaseOut 插值與停頓感，使武器揮動動作更平滑自然。
+- **修改檔案**：`AGENT.md`、`SKILLS/roblox-deploy/SKILL.md`、`src/server/NPCManager.lua`、`src/client/CombatClient.lua`
+
 ### 2026-05-04（第八批）
 - **商城 UI 格狀化**：`openShopPanel` 全面重寫，改用 UIGridLayout 格狀圖示卡片（4欄）
   - 格狀卡片：大 Emoji 圖示 + 名稱 + 底部狀態徽章（顏色區分使用中/已擁有/未擁有）

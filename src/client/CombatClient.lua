@@ -489,31 +489,38 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	local original = motor.Transform
 
 	-- 向前揮出
-	local target = CFrame.Angles(swingAngle, 0, 0)
+	local target = CFrame.Angles(swingAngle, 0, 0.2) -- 增加一點側面傾斜讓動作更自然
 	local steps = math.ceil(duration / (1/60))
 	local perStep = 1 / steps
 
 	-- 用 task.spawn 做逐幀插值（Motor6D.Transform 不支援 TweenService）
 	task.spawn(function()
-		-- 揮出階段（前 40%）
-		local outSteps = math.ceil(steps * 0.4)
+		-- 揮出階段（前 30% - 加速揮出）
+		local outSteps = math.ceil(steps * 0.3)
 		for i = 1, outSteps do
 			if not char.Parent then break end
-			local t = i * (1 / outSteps)
-			motor.Transform = original:Lerp(target, t)
+			local t = i / outSteps
+			-- 使用平滑插值（EaseIn）
+			local alpha = t * t 
+			motor.Transform = original:Lerp(target, alpha)
 			task.wait(1/60)
 		end
 		motor.Transform = target
 
-		-- 彈回階段（後 60%）
+		-- 停頓一瞬間（打擊感）
+		task.wait(0.05)
+
+		-- 彈回階段（後 70% - 緩慢收回）
 		local backSteps = steps - outSteps
 		for i = 1, backSteps do
 			if not char.Parent then break end
-			local t = i * (1 / backSteps)
+			local t = i / backSteps
 			-- Bounce 效果：超過終點再回來
 			local bounce = math.sin(t * math.pi)
-			local extra = CFrame.Angles(swingAngle * 0.15 * bounce, 0, 0)
-			motor.Transform = target:Lerp(original, t) * extra
+			local extra = CFrame.Angles(swingAngle * 0.1 * bounce, 0, 0)
+			-- 使用 EaseOut 插值收回
+			local alpha = 1 - (1 - t) * (1 - t)
+			motor.Transform = target:Lerp(original, alpha) * extra
 			task.wait(1/60)
 		end
 		motor.Transform = original

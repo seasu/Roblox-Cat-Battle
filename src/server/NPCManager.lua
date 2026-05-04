@@ -421,24 +421,40 @@ function NPCManager.spawnNPC(npcId, position)
 	end
 
 	local instanceId = generateId()
-	local spawnPos = Vector3.new(
-		position.X + math.random(-5, 5),
-		position.Y,
-		position.Z + math.random(-5, 5)
-	)
+	local rawX = position.X + math.random(-5, 5)
+	local rawZ = position.Z + math.random(-5, 5)
 
-	local ok, result = pcall(createNPCModel, def, instanceId, spawnPos)
+	-- ── 地面偵測 (Raycast) ──────────────────────────────────────────
+	-- 從上方 20 格向下射線，找尋最近的地面，避免 NPC 因為碰撞飄在半空
+	local rayOrigin = Vector3.new(rawX, position.Y + 20, rawZ)
+	local rayDirection = Vector3.new(0, -40, 0)
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	-- 排除目前已有的 NPC 模型
+	local excludeList = {}
+	for _, model in pairs(npcModels) do table.insert(excludeList, model) end
+	raycastParams.FilterDescendantsInstances = excludeList
+
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+	local spawnY = position.Y
+	if result then
+		spawnY = result.Position.Y
+	end
+
+	local spawnPos = Vector3.new(rawX, spawnY, rawZ)
+
+	local ok, npcModel = pcall(createNPCModel, def, instanceId, spawnPos)
 	if not ok then
-		warn("[NPCManager] 建立 NPC 模型失敗：", result)
+		warn("[NPCManager] 建立 NPC 模型失敗：", npcModel)
 		return nil
 	end
-	if not result then
+	if not npcModel then
 		warn("[NPCManager] 模型為 nil：", npcId)
 		return nil
 	end
 
 	-- 使用模型的實際 Pivot 位置作為追蹤位置（Body 中心）
-	local pivotPos = result:GetPivot().Position
+	local pivotPos = npcModel:GetPivot().Position
 
 	activeNPCs[instanceId] = {
 		definition = def,
@@ -446,7 +462,7 @@ function NPCManager.spawnNPC(npcId, position)
 		position   = pivotPos,
 		instanceId = instanceId,
 	}
-	npcModels[instanceId] = result
+	npcModels[instanceId] = npcModel
 	npcHomePositions[instanceId] = pivotPos
 	npcNextAttackAt[instanceId] = 0
 	npcState[instanceId] = "idle"
