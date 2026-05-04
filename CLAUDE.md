@@ -26,6 +26,17 @@
 1. `rojo build -o game.rbxl`
 2. 使用 Open Cloud API 推送到 Universe ID: ${{ secrets.UNIVERSE_ID }}
 
+## 📋 變更記錄規則
+
+每次完成修改後，**必須**更新 `GAME_DESIGN.md`，記錄以下內容：
+- 修改的系統名稱
+- 新增或修改的檔案清單
+- 功能狀態（✅ 完成 / ⚠️ 部分 / ❌ 未做）
+
+這讓下次對話不需要重新閱讀所有程式碼就能掌握現狀。
+
+若問題涉及「目前有沒有 X 功能」，**先查 `GAME_DESIGN.md`**，再閱讀程式碼確認。
+
 ## ⚠️ 特別叮嚀
 - 不要直接修改 `.rbxl` 二進制檔案（因為你改不動）。
 - 所有的物件結構（例如 Folder, RemoteEvent）都應該在 `default.project.json` 中定義，而不是在 Studio 中手動建立。

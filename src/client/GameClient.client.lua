@@ -59,7 +59,17 @@ end)
 
 -- ── 裝備變更 ─────────────────────────────────────────────────────
 getEvent("EquipmentChanged").OnClientEvent:Connect(function(loadout: any)
-	-- 預留給之後的裝備面板 UI 刷新
+	UIManager.onEquipmentChanged(loadout)
+end)
+
+-- ── 碎片掉落 ─────────────────────────────────────────────────────
+getEvent("UpdateFragments").OnClientEvent:Connect(function(catId: string, count: number)
+	UIManager.updateFragments(catId, count)
+end)
+
+-- ── 合成結果 ─────────────────────────────────────────────────────
+getEvent("SynthesisResult").OnClientEvent:Connect(function(success: boolean, message: string)
+	UIManager.showSynthesisResult(success, message)
 end)
 
 -- ── 技能系統 ─────────────────────────────────────────────────────

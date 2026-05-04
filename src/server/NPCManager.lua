@@ -34,6 +34,14 @@ local NPC_CONFIG = {
 	wildHumanHard   = { kind="wildHuman", scale=1.6, main=BrickColor.new("Maroon"),        accent=BrickColor.new("Really black")  },
 }
 
+-- 碎片掉落機率（依 NPC 類型）
+local FRAGMENT_DROP_RATE = { Doll = 0.08, WildCat = 0.15, WildHuman = 0.22 }
+-- 可合成的特殊貓列表
+local SPECIAL_CAT_IDS = {
+	"shadowCat", "flameCat", "frostCat", "thunderCat",
+	"sakuraCat", "orangeCat", "calicoCat", "tuxedoCat",
+}
+
 -- NPC 移動速度（玩偶靜止，野貓和野人會追逐玩家）
 local MOVE_SPEED_BY_KIND = {
 	doll      = 0,
@@ -474,6 +482,18 @@ function NPCManager.handleDeath(instanceId, killer)
 
 	if NPCManager._experienceManager then
 		NPCManager._experienceManager.addXP(killer, xpGained)
+	end
+
+	-- 碎片掉落（隨機特殊貓碎片）
+	local dropRate = FRAGMENT_DROP_RATE[def.kind] or 0.08
+	if math.random() < dropRate then
+		local fragmentCatId = SPECIAL_CAT_IDS[math.random(#SPECIAL_CAT_IDS)]
+		if killerData then
+			killerData.catFragments = killerData.catFragments or {}
+			killerData.catFragments[fragmentCatId] = (killerData.catFragments[fragmentCatId] or 0) + 1
+			local fragCount = killerData.catFragments[fragmentCatId]
+			remoteEvents:WaitForChild("UpdateFragments"):FireClient(killer, fragmentCatId, fragCount)
+		end
 	end
 
 	remoteEvents:WaitForChild("UpdateUI"):FireClient(killer, "coins", coinsGained)

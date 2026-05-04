@@ -128,6 +128,28 @@ function CatManager.handleSelectCat(player: Player, catId: string)
 	SkillManager.initInnateSkills(player)
 end
 
+local SYNTHESIS_COST = 10  -- 合成所需碎片數
+
+function CatManager.synthesizeCat(player: Player, catId: string)
+	local data = DataStore.getData(player)
+	if not data then return false, "資料讀取失敗。" end
+	if not CatData.getCatById(catId) then return false, "無效的貓咪 ID。" end
+	if data.ownedCats[catId] then return false, "你已擁有這隻貓咪了！" end
+
+	data.catFragments = data.catFragments or {}
+	local frags = data.catFragments[catId] or 0
+	if frags < SYNTHESIS_COST then
+		return false, string.format("碎片不足！需要 %d 片，目前只有 %d 片。", SYNTHESIS_COST, frags)
+	end
+
+	data.catFragments[catId] = frags - SYNTHESIS_COST
+	data.ownedCats[catId] = true
+	DataStore.savePlayer(player)
+
+	local cat = CatData.getCatById(catId)
+	return true, "恭喜合成「" .. (cat and cat.displayName or catId) .. "」！"
+end
+
 function CatManager.getActiveCat(player: Player)
 	local data = DataStore.getData(player)
 	if not data then return CatData.getCatById("whiteCat") end
