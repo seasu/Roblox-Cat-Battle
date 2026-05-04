@@ -454,6 +454,53 @@ function CombatClient.onNPCDied(instanceId: string)
 	end
 end
 
+function CombatClient.playDeathAnimation()
+	local char = localPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then return end
+	local pos = root.Position
+
+	-- 紅色爆發光球
+	vfxBurst(pos, Color3.fromRGB(220, 30, 30), 1.5, 9, 0.5)
+	vfxBurst(pos, Color3.fromRGB(255, 120, 50), 0.8, 5, 0.35)
+	vfxRing(pos, Color3.fromRGB(200, 0, 0), 1, 8, 0.45)
+
+	-- 碎裂方塊：隨機飛散的身體碎片
+	local FRAGMENT_COLORS = {
+		Color3.fromRGB(230, 230, 230),
+		Color3.fromRGB(180, 180, 180),
+		Color3.fromRGB(255, 200, 180),
+		Color3.fromRGB(200, 160, 140),
+	}
+	for i = 1, 20 do
+		local sz = math.random(15, 40) / 100
+		local frag = vfxPart(
+			pos + Vector3.new(math.random(-8, 8) / 10, math.random(0, 15) / 10, math.random(-8, 8) / 10),
+			Vector3.new(sz, sz, sz),
+			FRAGMENT_COLORS[math.random(1, #FRAGMENT_COLORS)],
+			Enum.Material.SmoothPlastic,
+			0,
+			1.2
+		)
+		local targetPos = pos + Vector3.new(
+			math.random(-40, 40) / 10,
+			math.random(5, 30) / 10,
+			math.random(-40, 40) / 10
+		)
+		TweenService:Create(frag, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = targetPos,
+			Transparency = 1,
+			Size = Vector3.new(sz * 0.2, sz * 0.2, sz * 0.2),
+			CFrame = CFrame.new(targetPos) * CFrame.Angles(
+				math.random(0, 314) / 100,
+				math.random(0, 314) / 100,
+				math.random(0, 314) / 100
+			),
+		}):Play()
+	end
+end
+
 function CombatClient.init()
 	-- 滑鼠左鍵攻擊
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)

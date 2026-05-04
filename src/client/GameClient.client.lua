@@ -117,6 +117,7 @@ end)
 
 -- ── 玩家死亡 ─────────────────────────────────────────────────────
 getEvent("PlayerDied").OnClientEvent:Connect(function()
+	CombatClient.playDeathAnimation()
 	UIManager.showDeathScreen()
 end)
 

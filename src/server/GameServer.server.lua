@@ -102,6 +102,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 		local pData = DataStore.getData(player)
 		local catId = pData and pData.activeCatId or "whiteCat"
 		CatAppearance.apply(player, catId)
+
+		-- 死亡時通知客戶端
+		humanoid.Died:Connect(function()
+			getEvent("PlayerDied"):FireClient(player)
+		end)
 	end)
 
 	-- 通知客戶端資料已就緒
@@ -173,6 +178,10 @@ end)
 
 getEvent("PvPAccepted").OnServerEvent:Connect(function(player: Player, challengerUserId: number)
 	PvPManager.handleAccept(player, challengerUserId)
+end)
+
+getEvent("RequestRespawn").OnServerEvent:Connect(function(player: Player)
+	player:LoadCharacter()
 end)
 
 -- ── RemoteFunction 路由 ─────────────────────────────────────────
