@@ -108,7 +108,42 @@ RemoteFunction：`GetPlayerData` / `GetShopCatalog`
 
 ---
 
-## 八、NPC AI 設計
+## 八、攻擊視覺特效（VFX）系統
+
+位置：`src/client/CombatClient.lua`
+
+### 架構
+
+```
+spawnAttackVFX(skillId, hitPos)
+  ├── 武器底層特效  WEAPON_VFX[currentWeapon](hitPos)
+  └── 技能疊加特效  SKILL_VFX[skillId](hitPos)
+```
+
+- `CombatClient.currentWeapon`：由 `GameClient` 在 `EquipmentChanged` 與 `LoadDataResponse` 時同步
+- 攻擊指令發出後立即播放特效，不等伺服器回應（手感即時）
+
+### 武器特效對應
+
+| 武器 ID | 特效風格 |
+|---|---|
+| weaponClaws | 銀灰三條爪痕 + 小衝擊球 |
+| weaponSword | 藍白劍氣爪痕 + 橫向環 |
+| weaponShield | 金色雙環衝擊波 + 大球 |
+| weaponStaff | 紫色星爆 + 上升魔法粒子 |
+| 無武器 | 白色三條爪痕 + 小球 |
+
+### VFX 基礎函數
+
+| 函數 | 用途 |
+|---|---|
+| `vfxBurst(pos, color, startSize, endSize, duration)` | 球形擴散後淡出 |
+| `vfxRing(pos, color, startR, endR, duration)` | 圓環向外展開 |
+| `vfxClawSlash(pos, color, count, length)` | 平行爪痕條紋 |
+| `vfxRise(pos, color, count)` | 粒子向上噴射 |
+| `vfxLightning(pos, color, segments)` | 隨機鋸齒閃電段 |
+
+## 九、NPC AI 設計
 
 NPC 採三狀態機（`NPCManager.lua` 的 `npcState` 表）：
 

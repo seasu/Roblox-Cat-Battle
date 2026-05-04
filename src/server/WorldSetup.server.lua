@@ -135,36 +135,41 @@ end
 
 local zones: { {
 	name: string,
+	subLabel: string,
 	center: Vector3,
 	size: Vector3,
 	color: BrickColor,
 	labelColor: Color3,
 } } = {
 	{
-		name = "【玩偶區】",
+		name = "🎪 玩偶區",
+		subLabel = "初學者區域 · Lv.1~20",
 		center = Vector3.new(-150, 0.3, 0),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright yellow"),
 		labelColor = Color3.fromRGB(255, 230, 50),
 	},
 	{
-		name = "【野貓區】",
+		name = "🐱 野貓區",
+		subLabel = "進階區域 · Lv.20~50",
 		center = Vector3.new(0, 0.3, -150),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright orange"),
-		labelColor = Color3.fromRGB(255, 140, 30),
+		labelColor = Color3.fromRGB(255, 160, 40),
 	},
 	{
-		name = "【野人區】",
+		name = "💀 野人區",
+		subLabel = "高難度區域 · Lv.50+",
 		center = Vector3.new(150, 0.3, 0),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright red"),
-		labelColor = Color3.fromRGB(255, 80, 80),
+		labelColor = Color3.fromRGB(255, 90, 90),
 	},
 }
 
 for _, zone in ipairs(zones) do
-	local tile = makePart({
+	-- 地面色塊（保留，標示戰鬥範圍）
+	makePart({
 		name = zone.name,
 		size = zone.size,
 		cframe = CFrame.new(zone.center),
@@ -174,22 +179,69 @@ for _, zone in ipairs(zones) do
 		parent = workspace,
 	})
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.new(0, 240, 0, 70)
-	billboard.StudsOffset = Vector3.new(0, 10, 0)
-	billboard.AlwaysOnTop = false
-	billboard.Parent = tile
+	-- 高空光柱（細長半透明柱，從地面延伸到天空）
+	local pillarHeight = 120
+	makePart({
+		name = zone.name .. "_Pillar",
+		size = Vector3.new(4, pillarHeight, 4),
+		cframe = CFrame.new(zone.center + Vector3.new(0, pillarHeight / 2, 0)),
+		color = zone.color,
+		material = Enum.Material.Neon,
+		transparency = 0.82,
+		parent = workspace,
+	})
 
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 0.3
-	label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	label.Text = zone.name
-	label.TextColor3 = zone.labelColor
-	label.TextStrokeTransparency = 0
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 28
-	label.Parent = billboard
+	-- 高空錨點 Part（不可見，BillboardGui 的掛載點）
+	local signAnchor = makePart({
+		name = zone.name .. "_SignAnchor",
+		size = Vector3.new(0.1, 0.1, 0.1),
+		cframe = CFrame.new(zone.center + Vector3.new(0, 90, 0)),
+		color = BrickColor.new("Really black"),
+		transparency = 1,
+		parent = workspace,
+	})
+
+	-- 大型區域標示牌（高空，面向四方 AlwaysOnTop）
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 380, 0, 110)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 500  -- 遠距也看得到
+	billboard.Parent = signAnchor
+
+	-- 背景
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bg.BackgroundTransparency = 0.35
+	bg.BorderSizePixel = 0
+	bg.Parent = billboard
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 12)
+	bgCorner.Parent = bg
+
+	-- 名稱文字
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, 0, 0.55, 0)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = zone.name
+	nameLbl.TextColor3 = zone.labelColor
+	nameLbl.TextStrokeTransparency = 0.1
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextScaled = true
+	nameLbl.Parent = billboard
+
+	-- 副標題（等級範圍提示）
+	local subLbl = Instance.new("TextLabel")
+	subLbl.Size = UDim2.new(1, 0, 0.38, 0)
+	subLbl.Position = UDim2.new(0, 0, 0.58, 0)
+	subLbl.BackgroundTransparency = 1
+	subLbl.Text = zone.subLabel or ""
+	subLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+	subLbl.TextStrokeTransparency = 0.4
+	subLbl.Font = Enum.Font.Gotham
+	subLbl.TextScaled = true
+	subLbl.Parent = billboard
 end
 
 -- ── 短路徑（生成點 → 各區域） ────────────────────────────────────

@@ -142,6 +142,16 @@
 
 ## 變更日誌
 
+### 2026-05-04（第五批）
+- **攻擊視覺特效**：`CombatClient.lua` 新增完整 VFX 系統
+  - 武器特效：鐵爪（銀色爪痕）、迷你劍（藍白劍氣）、貓盾（金色衝擊環）、魔法杖（紫色星爆）、無武器（白色爪痕）
+  - 技能特效：全部 16 種技能各有獨立特效（爆炸球、環形波、爪痕、閃電條、上升粒子等）
+  - 技能特效疊加在武器特效之上；攻擊指令發出即立即播放（不等伺服器）
+- **武器同步**：`EquipmentChanged` 事件同步 weapon id 到 `CombatClient.currentWeapon`
+- **區域高空標示**：`WorldSetup.server.lua` 改為高空錨點（Y=90）+ AlwaysOnTop BillboardGui，附副標題等級範圍
+- **光柱**：各戰鬥區域中央新增 120 格高 Neon 細光柱，遠距可見
+- **修改檔案**：`src/client/CombatClient.lua`、`src/client/GameClient.client.lua`、`src/server/WorldSetup.server.lua`
+
 ### 2026-05-04（第四批）
 - **NPC 三狀態 AI**：idle（漫步）→ chase（追逐）→ return（放棄返回），取代原本的無限追逐
 - **感知範圍縮小**：45 格 → 28 格；漫步速度減半（更自然）

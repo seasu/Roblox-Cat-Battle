@@ -28,6 +28,10 @@ localPlayer.CharacterAdded:Connect(onCharacterAdded)
 getEvent("LoadDataResponse").OnClientEvent:Connect(function(playerData: any)
 	UIManager.init(playerData)
 	CombatClient.init()
+	-- 初始化武器狀態
+	if playerData and playerData.equipment then
+		CombatClient.currentWeapon = playerData.equipment.weapon or nil
+	end
 
 	-- 建立技能列順序對應
 	local slots: { string } = {}
@@ -60,6 +64,8 @@ end)
 -- ── 裝備變更 ─────────────────────────────────────────────────────
 getEvent("EquipmentChanged").OnClientEvent:Connect(function(loadout: any)
 	UIManager.onEquipmentChanged(loadout)
+	-- 同步武器到 CombatClient，用於決定攻擊特效
+	CombatClient.currentWeapon = loadout and loadout.weapon or nil
 end)
 
 -- ── 碎片掉落 ─────────────────────────────────────────────────────
