@@ -297,7 +297,20 @@ local SKILL_VFX: { [string]: (pos: Vector3) -> () } = {
 
 -- ── 主特效入口 ────────────────────────────────────────────────────
 -- VFX cooldown：BasicSwipe 最小間隔 0.12 秒，避免連打時粒子堆疊暈開
+local lastVfxTime: { [string]: number } = {}
+local VFX_COOLDOWN: { [string]: number } = {
+	BasicSwipe = 0.12,
+}
+
 local function spawnAttackVFX(skillId: string, hitPos: Vector3)
+	local now = os.clock()
+	local cd = VFX_COOLDOWN[skillId]
+	if cd then
+		local last = lastVfxTime[skillId] or 0
+		if now - last < cd then return end
+		lastVfxTime[skillId] = now
+	end
+
 	local weaponId = CombatClient.currentWeapon
 	local weaponFn = (weaponId and WEAPON_VFX[weaponId]) or defaultWeaponVFX
 	weaponFn(hitPos)
@@ -309,31 +322,54 @@ end
 
 -- 快捷鍵對應（第 2–6 槽）
 
-local function playOneShotSound(soundId: string, position: Vector3?, volume: number?)
-	local ok, err = pcall(function()
-	local sound = Instance.new("Sound")
-	sound.SoundId = soundId
-	sound.Volume = volume or 0.8
-	sound.RollOffMaxDistance = 80
+-- ── 音效系統 ─────────────────────────────────────────────────────
+-- 使用預先載入的固定 Sound 物件，避免連點時重複建立導致無聲/喇叭聲
+
+local soundFolder = Instance.new("Folder")
+soundFolder.Name  = "CatBattleSounds"
+soundFolder.Parent = game:GetService("SoundService")
+
+local function makeSound(id: string, vol: number): Sound
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume  = vol
+	s.RollOffMaxDistance = 80
+	s.Parent  = soundFolder
+	return s
+end
+
+-- 確認可用的 Roblox 免費 Sound Asset
+local SFX = {
+	-- 攻擊揮爪：swoosh 風聲
+	attack  = makeSound("rbxassetid://186311218", 0.75),
+	-- 命中打擊：punch
+	hit     = makeSound("rbxassetid://131961136", 0.80),
+	-- 被 NPC 擊中：受傷聲
+	hurt    = makeSound("rbxassetid://131961136", 0.60),
+	-- 金幣掉落
+	coin    = makeSound("rbxassetid://256804995", 0.85),
+	-- 碎片掉落：魔法音
+	magic   = makeSound("rbxassetid://847061203", 0.90),
+}
+
+-- 播放音效（直接用固定物件，停止後重播）
+local function playSound(sfx: Sound, position: Vector3?)
+	sfx:Stop()
 	if position then
-		local part = Instance.new("Part")
-		part.Anchored = true
-		part.CanCollide = false
-		part.Transparency = 1
-		part.Size = Vector3.new(0.1, 0.1, 0.1)
-		part.Position = position
-		part.Parent = workspace
-		sound.Parent = part
-		sound:Play()
-		game:GetService("Debris"):AddItem(part, 2)
+		-- 3D 定位：暫時把 Sound 放到位置附近的 workspace Part
+		local p = Instance.new("Part")
+		p.Anchored    = true
+		p.CanCollide  = false
+		p.Transparency = 1
+		p.Size        = Vector3.new(0.1, 0.1, 0.1)
+		p.Position    = position
+		p.Parent      = workspace
+		local s2 = sfx:Clone()
+		s2.Parent = p
+		s2:Play()
+		game:GetService("Debris"):AddItem(p, 3)
 	else
-		sound.Parent = workspace
-		sound:Play()
-		game:GetService("Debris"):AddItem(sound, 2)
-	end
-	end)
-	if not ok then
-		-- 音效載入失敗時靜默忽略（Asset 類型不符或 ID 無效）
+		sfx:Play()
 	end
 end
 
@@ -373,14 +409,17 @@ end
 -- Forward declaration：triggerSwingForSkill 定義在後段，需先宣告避免 nil 呼叫
 local triggerSwingForSkill: (skillId: string) -> ()
 
--- 基礎攻擊整體 cooldown（伺服器驗證約 0.3 秒一次）
-local lastBasicAttackTime = 0
-local BASIC_ATTACK_CD = 0.30  -- 秒
+-- 攻擊整體 cooldown（0.35s），防止連點 VFX 堆疊 / 音效疊加
+local lastAttackTime = 0
+local ATTACK_CD = 0.35
+
+-- VFX 最近一次播放時間
+local lastVfxTime = 0
 
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	local now = os.clock()
-	if now - lastBasicAttackTime < BASIC_ATTACK_CD then return end
-	lastBasicAttackTime = now
+	if now - lastAttackTime < ATTACK_CD then return end
+	lastAttackTime = now
 
 	local char = localPlayer.Character
 	if not char then return end
@@ -394,8 +433,14 @@ function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 		useSkillEvent:FireServer("BasicSwipe", instanceId)
 	end
 
-	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://131961136", vfxPos, 0.7)
+	-- VFX 也受 cooldown 保護，不會堆疊
+	if now - lastVfxTime >= ATTACK_CD then
+		lastVfxTime = now
+		spawnAttackVFX("BasicSwipe", vfxPos)
+	end
+
+	-- 揮爪音效（固定物件直接播放，不建立新實例）
+	playSound(SFX.attack, vfxPos)
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -439,7 +484,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playOneShotSound("rbxassetid://131961136", position, isCrit and 1 or 0.8)  -- 打擊音效
+	playSound(SFX.hit, position)
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,
@@ -818,7 +863,7 @@ local function playDropCoins(pos: Vector3, amount: number)
 	end)
 
 	-- 金幣音效（輕盈的叮叮聲）
-	playOneShotSound("rbxassetid://267401236", pos, 0.9)  -- 金幣音效（爽脆）
+	playSound(SFX.coin, pos)
 end
 
 -- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
@@ -910,7 +955,7 @@ local function playDropFragment(pos: Vector3, catId: string)
 	end)
 
 	-- 碎片音效（神秘晶體聲）
-	playOneShotSound("rbxassetid://178452217", pos, 1.0)  -- 碎片音效
+	playSound(SFX.magic, pos)
 end
 
 -- 處理 NPCDrops 事件
@@ -1064,12 +1109,34 @@ function CombatClient.init()
 		CombatClient.onNPCDrops(pos, coins, fragmentCatId)
 	end)
 
+	-- ── NPC 攻擊音效：監聽角色 HP 下降播受傷聲 ─────────────────────
+	local lastHurtTime = 0
+	local function bindHurtSound(character: Model)
+		local hum = character:WaitForChild("Humanoid") :: Humanoid
+		hum.HealthChanged:Connect(function(newHp: number)
+			-- HP 下降（被攻擊）才播，且有 0.4s 冷卻避免連續爆音
+			local now = os.clock()
+			if newHp < hum.MaxHealth and now - lastHurtTime > 0.4 then
+				lastHurtTime = now
+				local hrp = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				playSound(SFX.hurt, hrp and hrp.Position)
+			end
+		end)
+	end
+
+	if localPlayer.Character then
+		task.spawn(bindHurtSound, localPlayer.Character)
+	end
+	localPlayer.CharacterAdded:Connect(function(char)
+		task.spawn(bindHurtSound, char)
+	end)
+
 	-- 處理攻擊輸入 (支援 PC 滑鼠與 iOS 觸控)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if gameProcessed then return end
 
-		-- 合併滑鼠點擊與手機點擊
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or
+			input.UserInputType == Enum.UserInputType.Touch then
 			CombatClient.attemptBasicAttack(input.Position)
 			return
 		end
