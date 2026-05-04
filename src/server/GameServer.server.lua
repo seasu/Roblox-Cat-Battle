@@ -11,6 +11,7 @@ local EquipmentManager = require(script.Parent.EquipmentManager)
 local SkillManager = require(script.Parent.SkillManager)
 local PvPManager = require(script.Parent.PvPManager)
 local CatAppearance = require(script.Parent.CatAppearance)
+local EquipmentAppearance = require(script.Parent.EquipmentAppearance)
 
 -- 跨模組依賴注入
 ExperienceManager._catManager = CatManager
@@ -102,6 +103,10 @@ Players.PlayerAdded:Connect(function(player: Player)
 		local pData = DataStore.getData(player)
 		local catId = pData and pData.activeCatId or "whiteCat"
 		CatAppearance.apply(player, catId)
+		-- 套用已裝備的配件外觀
+		if pData and pData.equipment then
+			EquipmentAppearance.apply(player, pData.equipment)
+		end
 
 		-- 死亡時通知客戶端
 		humanoid.Died:Connect(function()
@@ -146,10 +151,14 @@ end)
 
 getEvent("EquipItem").OnServerEvent:Connect(function(player: Player, itemId: string)
 	EquipmentManager.handleEquip(player, itemId)
+	local loadout = EquipmentManager.getEquipmentLoadout(player)
+	EquipmentAppearance.apply(player, loadout)
 end)
 
 getEvent("UnequipItem").OnServerEvent:Connect(function(player: Player, slot: string)
 	EquipmentManager.handleUnequip(player, slot)
+	local loadout = EquipmentManager.getEquipmentLoadout(player)
+	EquipmentAppearance.apply(player, loadout)
 end)
 
 getEvent("UseSkill").OnServerEvent:Connect(function(player: Player, skillId: string, targetInstanceId: string?)
@@ -162,6 +171,9 @@ end)
 
 getEvent("BuyEquipment").OnServerEvent:Connect(function(player: Player, itemId: string)
 	ShopManager.handleBuyEquipment(player, itemId)
+	-- 購買+裝備後，更新角色 3D 外觀
+	local loadout = EquipmentManager.getEquipmentLoadout(player)
+	EquipmentAppearance.apply(player, loadout)
 end)
 
 getEvent("SynthesizeCat").OnServerEvent:Connect(function(player: Player, catId: string)
