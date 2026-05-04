@@ -17,6 +17,11 @@ local function onCharacterAdded(character: Model)
 	character:WaitForChild("HumanoidRootPart")
 	UIManager.hideDeathScreen()
 	getEvent("RequestLoadData"):FireServer()
+	-- 重生後重新套用武器外觀（角色重建需等待 0.4s 讓骨骼就緒）
+	task.spawn(function()
+		task.wait(0.4)
+		CombatClient.updateWeaponProp(CombatClient.currentWeapon)
+	end)
 end
 
 if localPlayer.Character then
@@ -28,9 +33,10 @@ localPlayer.CharacterAdded:Connect(onCharacterAdded)
 getEvent("LoadDataResponse").OnClientEvent:Connect(function(playerData: any)
 	UIManager.init(playerData)
 	CombatClient.init()
-	-- 初始化武器狀態
+	-- 初始化武器狀態並套用外觀
 	if playerData and playerData.equipment then
 		CombatClient.currentWeapon = playerData.equipment.weapon or nil
+		CombatClient.updateWeaponProp(CombatClient.currentWeapon)
 	end
 
 	-- 建立技能列順序對應
@@ -64,8 +70,9 @@ end)
 -- ── 裝備變更 ─────────────────────────────────────────────────────
 getEvent("EquipmentChanged").OnClientEvent:Connect(function(loadout: any)
 	UIManager.onEquipmentChanged(loadout)
-	-- 同步武器到 CombatClient，用於決定攻擊特效
+	-- 同步武器到 CombatClient，用於決定攻擊特效及外觀道具
 	CombatClient.currentWeapon = loadout and loadout.weapon or nil
+	CombatClient.updateWeaponProp(CombatClient.currentWeapon)
 end)
 
 -- ── 擁有物品變更（購買後通知）─────────────────────────────────────
