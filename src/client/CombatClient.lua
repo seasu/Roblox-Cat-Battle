@@ -805,16 +805,25 @@ function CombatClient.init()
 		CombatClient.onNPCDrops(pos, coins, fragmentCatId)
 	end)
 
-	-- 滑鼠左鍵攻擊
+	-- 處理攻擊輸入 (支援 PC 滑鼠與 iOS 觸控)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if gameProcessed then return end
 
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			CombatClient.attemptBasicAttack()
+		-- 合併滑鼠點擊與手機點擊
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			CombatClient.attemptBasicAttack(input.Position)
 			return
 		end
 
 		local slotIndex = KEY_BINDINGS[input.KeyCode]
+		if slotIndex then
+			CombatClient.activateSkill(slotIndex)
+		end
+	end)
+end
+
+return CombatClient
+NDINGS[input.KeyCode]
 		if slotIndex then
 			CombatClient.activateSkill(slotIndex)
 		end
