@@ -14,7 +14,7 @@
 | 等級 / 經驗值 | ✅ | ✅ | XP bar + 升級 toast |
 | 技能系統 | ✅ | ✅ | 技能列 Q/E/R/F，冷卻 overlay |
 | 基礎攻擊 / 點擊 NPC | ✅ | ✅ | CombatClient 射線偵測 |
-| 武器 / 裝備系統 | ✅ | ✅ | 商城裝備 tab + 裝備面板（⚔ 按鈕） |
+| 武器 / 裝備系統 | ✅ | ✅ | 含角色 3D 外觀配件（EquipmentAppearance） | 商城裝備 tab + 裝備面板（⚔ 按鈕） |
 | 商城（Robux 買貓） | ✅ | ✅ | 商城貓咪 tab |
 | 商城（金幣買裝備） | ✅ | ✅ | 商城裝備 tab，BuyEquipment 事件 |
 | 寵物合成系統 | ✅ | ✅ | 碎片 drop + 合成後端 + 合成 tab |
@@ -142,6 +142,22 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（第八批）
+- **商城 UI 格狀化**：`openShopPanel` 全面重寫，改用 UIGridLayout 格狀圖示卡片（4欄）
+  - 格狀卡片：大 Emoji 圖示 + 名稱 + 底部狀態徽章（顏色區分使用中/已擁有/未擁有）
+  - 點擊卡片彈出詳情 popup（大圖示 + 說明 + 數值 + 確認按鈕）
+  - 合成 tab：popup 內顯示碎片進度條
+  - 已移除舊的行式 buildCard，改為 buildIconCard + showDetailPopup
+- **修改檔案**：`src/client/UIManager.lua`
+
+### 2026-05-04（第七批）
+- **裝備 3D 外觀**：新增 `EquipmentAppearance.lua`，依裝備槽在角色模型上附加 WeldConstraint 配件
+  - 項圈：collarBasic（棕色帶）、collarSpike（黑帶+三尖刺）、collarHeal（綠色 Neon 帶+寶石）、collarSpeed（白色細帶+雙翼）
+  - 帽子：hatWizard（帽簷+高身+紫尖）、hatKnight（金屬頭盔+紅冠）、hatBandana（紅色頭巾+結）、hatCrown（金環+三色寶石）
+  - 武器：weaponClaws（右手三爪）、weaponSword（握柄+護手+刀身）、weaponShield（左手盾牌+金色徽章）、weaponStaff（杖身+魔法球+光環）
+- **觸發時機**：登入套用、EquipItem、UnequipItem、BuyEquipment 均呼叫 EquipmentAppearance.apply
+- **修改檔案**：新增 `src/server/EquipmentAppearance.lua`，修改 `src/server/GameServer.server.lua`
 
 ### 2026-05-04（第六批）
 - **頭部修正**：`CatAppearance.lua` 球頭眼睛/鼻子改為相對 `catHead`（球頭 CFrame）定位而非 `head.CFrame`；耳朵改為找 `CatHeadShape` 做錨點；Y 偏移調整為 -0.5 以確保球底貼合軀幹

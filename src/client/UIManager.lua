@@ -268,123 +268,321 @@ local function buildPanelBase(title: string): (Frame, Frame, () -> ())
 	return overlay, scroll, doClose
 end
 
--- 圖示色塊（左側方形色條，作為視覺識別）
+-- 圖示顏色（格狀卡片背景色）
 local ICON_COLORS: { [string]: Color3 } = {
-	-- 貓咪
-	whiteCat    = Color3.fromRGB(230, 230, 230),
-	shadowCat   = Color3.fromRGB(60,  40,  90),
-	flameCat    = Color3.fromRGB(220, 80,  20),
-	frostCat    = Color3.fromRGB(80,  180, 220),
-	thunderCat  = Color3.fromRGB(200, 200, 0),
-	sakuraCat   = Color3.fromRGB(240, 140, 170),
-	orangeCat   = Color3.fromRGB(230, 140, 30),
-	calicoCat   = Color3.fromRGB(160, 80,  220),
-	tuxedoCat   = Color3.fromRGB(30,  30,  30),
-	-- 裝備槽
-	collar      = Color3.fromRGB(120, 200, 100),
-	hat         = Color3.fromRGB(100, 160, 240),
-	weapon      = Color3.fromRGB(220, 120, 60),
+	whiteCat    = Color3.fromRGB(210, 210, 210),
+	shadowCat   = Color3.fromRGB(55,  30,  80),
+	flameCat    = Color3.fromRGB(210, 70,  15),
+	frostCat    = Color3.fromRGB(60,  160, 210),
+	thunderCat  = Color3.fromRGB(190, 185, 0),
+	sakuraCat   = Color3.fromRGB(230, 120, 160),
+	orangeCat   = Color3.fromRGB(220, 130, 20),
+	calicoCat   = Color3.fromRGB(140, 60,  210),
+	tuxedoCat   = Color3.fromRGB(25,  25,  25),
+	collar      = Color3.fromRGB(100, 180, 85),
+	hat         = Color3.fromRGB(80,  140, 220),
+	weapon      = Color3.fromRGB(200, 100, 40),
 }
 
--- 建立一張物品卡片，含左側圖示色條
--- iconKey: ICON_COLORS 的索引；fragData: {current, max} 用於合成進度條
-local function buildCard(parent: Frame, name: string, desc: string, rightText: string,
-	btnText: string, btnColor: Color3, onBuy: (() -> ())?,
-	iconKey: string?, fragData: { current: number, max: number }?): Frame
+-- 圖示 Emoji（格狀卡片大圖示）
+local ICON_EMOJI: { [string]: string } = {
+	whiteCat    = "🐱",
+	shadowCat   = "🌑",
+	flameCat    = "🔥",
+	frostCat    = "❄️",
+	thunderCat  = "⚡",
+	sakuraCat   = "🌸",
+	orangeCat   = "🍊",
+	calicoCat   = "🌈",
+	tuxedoCat   = "🎩",
+	collarBasic = "🔗",
+	collarSpike = "⚙️",
+	collarHeal  = "💚",
+	collarSpeed = "💨",
+	hatWizard   = "🧙",
+	hatKnight   = "⚔️",
+	hatBandana  = "🎗️",
+	hatCrown    = "👑",
+	weaponClaws = "🗡️",
+	weaponSword = "🔪",
+	weaponShield= "🛡️",
+	weaponStaff = "🪄",
+}
 
-	local cardHeight = fragData and 90 or 74
-	local card = createFrame(parent,
-		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0, cardHeight),
-		Color3.fromRGB(28, 28, 45), 0.05)
+-- ── 格狀商城輔助 ─────────────────────────────────────────────────
+
+-- 建立 UIGridLayout 格狀容器（取代 UIListLayout）
+local function makeGridScroll(parent: Frame, cellSize: UDim2): (ScrollingFrame, UIGridLayout)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Parent = parent
+	scroll.BackgroundTransparency = 1
+	scroll.ScrollBarThickness = 6
+	scroll.BorderSizePixel = 0
+	scroll.ZIndex = 22
+
+	local grid = Instance.new("UIGridLayout")
+	grid.Parent = scroll
+	grid.CellSize = cellSize
+	grid.CellPadding = UDim2.new(0, 8, 0, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.FillDirectionMaxCells = 3
+
+	local padding = Instance.new("UIPadding")
+	padding.Parent = scroll
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingTop = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 10)
+
+	grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		scroll.CanvasSize = UDim2.new(0, 0, 0, grid.AbsoluteContentSize.Y + 20)
+	end)
+
+	return scroll, grid
+end
+
+-- 建立一個格狀圖示卡片（正方形，大 Emoji + 名稱 + 狀態徽章）
+local function buildIconCard(parent: Frame, order: number, opts: {
+	id: string,
+	emoji: string,
+	name: string,
+	badgeText: string,
+	badgeColor: Color3,
+	bgColor: Color3,
+	dimmed: boolean?,       -- 未擁有/不可用時變暗
+	onClick: (() -> ())?,
+}): Frame
+
+	local card = Instance.new("Frame")
+	card.Name = "IconCard_" .. opts.id
+	card.BackgroundColor3 = opts.dimmed and Color3.fromRGB(18, 18, 28)
+		or opts.bgColor
+	card.BackgroundTransparency = opts.dimmed and 0.15 or 0.2
+	card.BorderSizePixel = 0
+	card.LayoutOrder = order
 	card.ZIndex = 23
+	card.Parent = parent
 
-	-- 左側圖示色條
-	local iconColor = (iconKey and ICON_COLORS[iconKey]) or Color3.fromRGB(80, 80, 100)
-	local iconBar = createFrame(card,
-		UDim2.new(0, 0, 0, 0), UDim2.new(0, 5, 1, 0),
-		iconColor, 0)
-	iconBar.ZIndex = 24
+	local cardCorner = Instance.new("UICorner")
+	cardCorner.CornerRadius = UDim.new(0, 12)
+	cardCorner.Parent = card
 
-	-- 圖示色塊（左側大色塊，顯示縮略識別色）
-	local iconBox = createFrame(card,
-		UDim2.new(0, 8, 0.1, 0), UDim2.new(0, 42, 0.8, 0),
-		iconColor, 0.1)
-	iconBox.ZIndex = 24
-	-- 圓角
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = iconBox
+	-- 大 Emoji（佔上方 55%）
+	local emojiLbl = Instance.new("TextLabel")
+	emojiLbl.Size = UDim2.new(1, 0, 0.52, 0)
+	emojiLbl.Position = UDim2.new(0, 0, 0.03, 0)
+	emojiLbl.BackgroundTransparency = 1
+	emojiLbl.Text = opts.emoji
+	emojiLbl.TextScaled = true
+	emojiLbl.Font = Enum.Font.GothamBold
+	emojiLbl.TextColor3 = Color3.new(1, 1, 1)
+	emojiLbl.TextTransparency = opts.dimmed and 0.45 or 0
+	emojiLbl.ZIndex = 24
+	emojiLbl.Parent = card
 
-	-- 首字圖示文字
-	local abbrev = string.upper(string.sub(name, 1, 1))
-	local iconTxt = createLabel(iconBox, abbrev,
-		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 1, 0), 22)
-	iconTxt.TextXAlignment = Enum.TextXAlignment.Center
-	iconTxt.TextColor3 = Color3.new(1, 1, 1)
-	iconTxt.ZIndex = 25
-
-	-- 名稱
-	local nameLbl = createLabel(card, name,
-		UDim2.new(0, 58, 0.05, 0), UDim2.new(0.5, 0, 0.4, 0), 15)
+	-- 名稱（中段）
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, -8, 0.22, 0)
+	nameLbl.Position = UDim2.new(0, 4, 0.54, 0)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = opts.name
+	nameLbl.TextScaled = true
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextColor3 = opts.dimmed and Color3.fromRGB(140, 140, 160)
+		or Color3.new(1, 1, 1)
+	nameLbl.TextStrokeTransparency = 0.5
 	nameLbl.ZIndex = 24
+	nameLbl.Parent = card
 
-	-- 描述
-	local descLbl = createLabel(card, desc,
-		UDim2.new(0, 58, 0.48, 0), UDim2.new(0.5, 0, 0.38, 0), 11)
-	descLbl.TextColor3 = Color3.fromRGB(160, 160, 180)
-	descLbl.Font = Enum.Font.Gotham
-	descLbl.ZIndex = 24
+	-- 狀態徽章（底部）
+	local badge = Instance.new("Frame")
+	badge.Size = UDim2.new(1, 0, 0.22, 0)
+	badge.Position = UDim2.new(0, 0, 0.78, 0)
+	badge.BackgroundColor3 = opts.badgeColor
+	badge.BackgroundTransparency = 0.1
+	badge.BorderSizePixel = 0
+	badge.ZIndex = 24
+	badge.Parent = card
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(0, 10)
+	badgeCorner.Parent = badge
 
-	-- 右側資訊文字
-	local rightLbl = createLabel(card, rightText,
-		UDim2.new(0.6, 0, 0.05, 0), UDim2.new(0.17, 0, 0.85, 0), 12)
-	rightLbl.TextXAlignment = Enum.TextXAlignment.Center
-	rightLbl.TextColor3 = Color3.fromRGB(200, 200, 220)
-	rightLbl.ZIndex = 24
+	local badgeLbl = Instance.new("TextLabel")
+	badgeLbl.Size = UDim2.new(1, 0, 1, 0)
+	badgeLbl.BackgroundTransparency = 1
+	badgeLbl.Text = opts.badgeText
+	badgeLbl.TextScaled = true
+	badgeLbl.Font = Enum.Font.GothamBold
+	badgeLbl.TextColor3 = Color3.new(1, 1, 1)
+	badgeLbl.ZIndex = 25
+	badgeLbl.Parent = badge
 
-	-- 合成碎片進度條（可選）
-	if fragData then
-		local barBg = createFrame(card,
-			UDim2.new(0, 58, 0, cardHeight - 20), UDim2.new(0.55, 0, 0, 10),
-			Color3.fromRGB(40, 40, 60), 0)
-		barBg.ZIndex = 24
-		local pct = math.clamp(fragData.current / fragData.max, 0, 1)
-		local barFill = createFrame(barBg,
-			UDim2.new(0, 0, 0, 0), UDim2.new(pct, 0, 1, 0),
-			pct >= 1 and Color3.fromRGB(160, 60, 220) or Color3.fromRGB(80, 120, 200), 0)
-		barFill.ZIndex = 25
-		local barCorner = Instance.new("UICorner")
-		barCorner.CornerRadius = UDim.new(1, 0)
-		barCorner.Parent = barBg
-		local barCorner2 = Instance.new("UICorner")
-		barCorner2.CornerRadius = UDim.new(1, 0)
-		barCorner2.Parent = barFill
-	end
-
-	-- 按鈕或狀態標籤
-	if onBuy then
-		local btn = createButton(card, btnText,
-			UDim2.new(0.79, 0, 0.12, 0), UDim2.new(0.19, 0, 0.76, 0),
-			btnColor)
-		btn.TextSize = 13
-		btn.ZIndex = 24
-		local btnCorner = Instance.new("UICorner")
-		btnCorner.CornerRadius = UDim.new(0, 6)
-		btnCorner.Parent = btn
-		btn.MouseButton1Click:Connect(onBuy)
-	else
-		local statusLbl = createLabel(card, btnText,
-			UDim2.new(0.79, 0, 0.12, 0), UDim2.new(0.19, 0, 0.76, 0), 13)
-		statusLbl.TextXAlignment = Enum.TextXAlignment.Center
-		if btnColor == Color3.new(0, 0, 0) then
-			statusLbl.TextColor3 = Color3.fromRGB(120, 220, 120)
-		else
-			statusLbl.TextColor3 = btnColor
-		end
-		statusLbl.ZIndex = 24
+	-- 點擊效果
+	if opts.onClick then
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 1, 0)
+		btn.BackgroundTransparency = 1
+		btn.Text = ""
+		btn.ZIndex = 26
+		btn.Parent = card
+		btn.MouseButton1Click:Connect(opts.onClick)
+		-- 懸停高亮
+		btn.MouseEnter:Connect(function()
+			card.BackgroundTransparency = opts.dimmed and 0.05 or 0.05
+		end)
+		btn.MouseLeave:Connect(function()
+			card.BackgroundTransparency = opts.dimmed and 0.15 or 0.2
+		end)
 	end
 
 	return card
+end
+
+-- 詳情彈出視窗（點擊圖示卡後出現）
+local function showDetailPopup(opts: {
+	title: string,
+	emoji: string,
+	desc: string,
+	stats: string?,
+	priceText: string,
+	btnText: string,
+	btnColor: Color3,
+	onConfirm: (() -> ())?,
+	fragData: { current: number, max: number }?,
+})
+	-- 遮罩
+	local mask = createFrame(screenGui,
+		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 1, 0),
+		Color3.new(0, 0, 0), 0.55)
+	mask.ZIndex = 40
+
+	-- 彈窗主體
+	local popup = createFrame(mask,
+		UDim2.new(0.2, 0, 0.2, 0), UDim2.new(0.6, 0, 0.6, 0),
+		Color3.fromRGB(18, 18, 32), 0.05)
+	popup.ZIndex = 41
+	local popCorner = Instance.new("UICorner")
+	popCorner.CornerRadius = UDim.new(0, 16)
+	popCorner.Parent = popup
+
+	-- 大 Emoji
+	local emojiLbl = Instance.new("TextLabel")
+	emojiLbl.Size = UDim2.new(1, 0, 0.28, 0)
+	emojiLbl.Position = UDim2.new(0, 0, 0.02, 0)
+	emojiLbl.BackgroundTransparency = 1
+	emojiLbl.Text = opts.emoji
+	emojiLbl.TextScaled = true
+	emojiLbl.Font = Enum.Font.GothamBold
+	emojiLbl.TextColor3 = Color3.new(1, 1, 1)
+	emojiLbl.ZIndex = 42
+	emojiLbl.Parent = popup
+
+	-- 標題
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(0.9, 0, 0.1, 0)
+	titleLbl.Position = UDim2.new(0.05, 0, 0.3, 0)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = opts.title
+	titleLbl.TextScaled = true
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.TextColor3 = Color3.new(1, 1, 1)
+	titleLbl.TextStrokeTransparency = 0.3
+	titleLbl.ZIndex = 42
+	titleLbl.Parent = popup
+
+	-- 描述
+	local descLbl = Instance.new("TextLabel")
+	descLbl.Size = UDim2.new(0.88, 0, 0.15, 0)
+	descLbl.Position = UDim2.new(0.06, 0, 0.41, 0)
+	descLbl.BackgroundTransparency = 1
+	descLbl.Text = opts.desc
+	descLbl.TextScaled = true
+	descLbl.Font = Enum.Font.Gotham
+	descLbl.TextColor3 = Color3.fromRGB(180, 180, 200)
+	descLbl.TextWrapped = true
+	descLbl.ZIndex = 42
+	descLbl.Parent = popup
+
+	-- 數值加成（若有）
+	if opts.stats and opts.stats ~= "" then
+		local statsLbl = Instance.new("TextLabel")
+		statsLbl.Size = UDim2.new(0.88, 0, 0.1, 0)
+		statsLbl.Position = UDim2.new(0.06, 0, 0.55, 0)
+		statsLbl.BackgroundTransparency = 1
+		statsLbl.Text = opts.stats
+		statsLbl.TextScaled = true
+		statsLbl.Font = Enum.Font.GothamBold
+		statsLbl.TextColor3 = Color3.fromRGB(120, 220, 140)
+		statsLbl.ZIndex = 42
+		statsLbl.Parent = popup
+	end
+
+	-- 碎片進度條（合成用）
+	if opts.fragData then
+		local fd = opts.fragData
+		local barY = (opts.stats and opts.stats ~= "") and 0.65 or 0.57
+		local barBg = createFrame(popup,
+			UDim2.new(0.06, 0, barY, 0), UDim2.new(0.88, 0, 0.06, 0),
+			Color3.fromRGB(30, 30, 50), 0)
+		barBg.ZIndex = 42
+		local c1 = Instance.new("UICorner"); c1.CornerRadius = UDim.new(1,0); c1.Parent = barBg
+		local pct = math.clamp(fd.current / fd.max, 0, 1)
+		local fill = createFrame(barBg, UDim2.new(0,0,0,0), UDim2.new(pct,0,1,0),
+			pct >= 1 and Color3.fromRGB(160,60,220) or Color3.fromRGB(80,140,220), 0)
+		fill.ZIndex = 43
+		local c2 = Instance.new("UICorner"); c2.CornerRadius = UDim.new(1,0); c2.Parent = fill
+
+		local fragLbl = Instance.new("TextLabel")
+		fragLbl.Size = UDim2.new(1, 0, 0.06, 0)
+		fragLbl.Position = UDim2.new(0, 0, barY + 0.065, 0)
+		fragLbl.BackgroundTransparency = 1
+		fragLbl.Text = string.format("碎片 %d / %d", fd.current, fd.max)
+		fragLbl.TextScaled = true
+		fragLbl.Font = Enum.Font.Gotham
+		fragLbl.TextColor3 = Color3.fromRGB(160, 180, 220)
+		fragLbl.ZIndex = 42
+		fragLbl.Parent = popup
+	end
+
+	-- 價格標示
+	local priceLbl = Instance.new("TextLabel")
+	priceLbl.Size = UDim2.new(0.88, 0, 0.08, 0)
+	priceLbl.Position = UDim2.new(0.06, 0, 0.75, 0)
+	priceLbl.BackgroundTransparency = 1
+	priceLbl.Text = opts.priceText
+	priceLbl.TextScaled = true
+	priceLbl.Font = Enum.Font.GothamBold
+	priceLbl.TextColor3 = Color3.fromRGB(255, 215, 80)
+	priceLbl.ZIndex = 42
+	priceLbl.Parent = popup
+
+	-- 確認按鈕
+	if opts.onConfirm then
+		local confirmBtn = createButton(popup, opts.btnText,
+			UDim2.new(0.1, 0, 0.85, 0), UDim2.new(0.5, 0, 0.12, 0),
+			opts.btnColor)
+		confirmBtn.TextScaled = true
+		confirmBtn.ZIndex = 42
+		local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0,10); cc.Parent = confirmBtn
+		confirmBtn.MouseButton1Click:Connect(function()
+			mask:Destroy()
+			opts.onConfirm()
+		end)
+	end
+
+	-- 關閉按鈕
+	local closeBtn = createButton(popup, "✕",
+		UDim2.new(0.65, 0, 0.85, 0), UDim2.new(0.25, 0, 0.12, 0),
+		Color3.fromRGB(100, 40, 40))
+	closeBtn.TextScaled = true
+	closeBtn.ZIndex = 42
+	local clc = Instance.new("UICorner"); clc.CornerRadius = UDim.new(0,10); clc.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(function()
+		mask:Destroy()
+	end)
+	mask.MouseButton1Click:Connect(function()
+		mask:Destroy()
+	end)
 end
 
 -- startTab: "cats" | "equip" | "synth"（nil = 預設貓咪）
@@ -395,56 +593,137 @@ function UIManager.openShopPanel(startTab: string?)
 	cachedEquipment = playerData.equipment or {}
 	cachedFragments = playerData.catFragments or {}
 
-	local overlay, scroll, _ = buildPanelBase("🛒 商城")
+	-- 面板底框
+	local overlay = createFrame(screenGui,
+		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 1, 0),
+		Color3.new(0, 0, 0), 0.5)
+	overlay.ZIndex = 20
 	shopPanel = overlay
 
-	-- Tab 按鈕列
-	local panel = overlay:FindFirstChildOfClass("Frame")
+	local panel = createFrame(overlay,
+		UDim2.new(0.04, 0, 0.04, 0), UDim2.new(0.92, 0, 0.92, 0),
+		Color3.fromRGB(14, 14, 26), 0.04)
+	panel.ZIndex = 21
+	local panelCorner = Instance.new("UICorner")
+	panelCorner.CornerRadius = UDim.new(0, 18)
+	panelCorner.Parent = panel
+
+	-- 標題列
+	local titleLbl = createLabel(panel, "🛒 商城",
+		UDim2.new(0.03, 0, 0.01, 0), UDim2.new(0.6, 0, 0.07, 0), 22)
+	titleLbl.ZIndex = 22
+
+	local closeBtn = createButton(panel, "✕",
+		UDim2.new(0.88, 0, 0.015, 0), UDim2.new(0.1, 0, 0.065, 0),
+		Color3.fromRGB(160, 40, 40))
+	closeBtn.ZIndex = 22
+	local cc2 = Instance.new("UICorner"); cc2.CornerRadius = UDim.new(0,10); cc2.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(function() overlay:Destroy() end)
+
+	-- Tab 列
 	local tabBar = createFrame(panel,
-		UDim2.new(0, 0, 0.09, 0), UDim2.new(1, 0, 0.1, 0),
-		Color3.new(0, 0, 0), 1)
+		UDim2.new(0, 0, 0.085, 0), UDim2.new(1, 0, 0.09, 0),
+		Color3.fromRGB(10, 10, 20), 0)
 	tabBar.ZIndex = 22
 
-	local function clearScroll()
-		for _, c in ipairs(scroll:GetChildren()) do
+	-- 格狀捲動區（佔剩餘空間）
+	local gridScroll, gridLayout = makeGridScroll(panel, UDim2.new(0, 0, 0, 0))  -- 大小稍後設定
+	gridScroll.Position = UDim2.new(0, 0, 0.185, 0)
+	gridScroll.Size = UDim2.new(1, 0, 0.815, 0)
+
+	-- 動態 cell 大小（依面板寬度計算，3 欄）
+	-- 使用固定像素 cell 大小，讓格子在各解析度下適中
+	gridLayout.CellSize = UDim2.new(0, 130, 0, 150)
+	gridLayout.FillDirectionMaxCells = 4
+
+	local function clearGrid()
+		for _, c in ipairs(gridScroll:GetChildren()) do
 			if c:IsA("Frame") then c:Destroy() end
 		end
 	end
 
+	-- ── 貓咪 tab ────────────────────────────────────────────────
 	local function showCatsTab()
-		clearScroll()
+		clearGrid()
 		local catalog = getFunction("GetShopCatalog"):InvokeServer()
 		local currentCatId = playerData.currentCat or "whiteCat"
-		for i, cat in ipairs(catalog or {}) do
-			local owned = playerData.ownedCats and playerData.ownedCats[cat.id]
+
+		-- 把白貓也加進來（免費起始貓）
+		local allCats = {{ id="whiteCat", displayName="白貓", description="起始免費貓咪", price=0 }}
+		for _, cat in ipairs(catalog or {}) do
+			table.insert(allCats, cat)
+		end
+
+		for i, cat in ipairs(allCats) do
+			local owned = (cat.id == "whiteCat") or (playerData.ownedCats and playerData.ownedCats[cat.id])
 			local isActive = currentCatId == cat.id
-			local rightText = isActive and "▶ 使用中" or (cat.price == 0 and "免費" or (cat.price .. " RB"))
-			local card: Frame
+			local emoji = ICON_EMOJI[cat.id] or "🐱"
+			local bgColor = ICON_COLORS[cat.id] or Color3.fromRGB(80, 80, 120)
+
+			local badgeText, badgeColor
 			if isActive then
-				card = buildCard(scroll, cat.displayName, cat.description, rightText, "使用中",
-					Color3.fromRGB(40, 160, 80), nil, cat.id)
+				badgeText = "▶ 使用中"
+				badgeColor = Color3.fromRGB(40, 160, 80)
 			elseif owned then
-				card = buildCard(scroll, cat.displayName, cat.description, rightText, "切換使用",
-					Color3.fromRGB(60, 120, 200), function()
-						getRemote("SelectCat"):FireServer(cat.id)
-						currentCatId = cat.id
-						UIManager.showToast("切換至 " .. cat.displayName, Color3.fromRGB(100, 200, 255))
-						task.delay(0.3, function() UIManager.openShopPanel("cats") end)
-					end, cat.id)
+				badgeText = "已擁有"
+				badgeColor = Color3.fromRGB(50, 100, 180)
 			else
-				card = buildCard(scroll, cat.displayName, cat.description, rightText, "購買",
-					Color3.fromRGB(200, 120, 20), function()
-						getRemote("PurchaseCat"):FireServer(cat.id)
-					end, cat.id)
+				badgeText = cat.price .. " RB"
+				badgeColor = Color3.fromRGB(160, 90, 10)
 			end
-			if card then card.LayoutOrder = i end
+
+			buildIconCard(gridScroll, i, {
+				id = cat.id,
+				emoji = emoji,
+				name = cat.displayName,
+				badgeText = badgeText,
+				badgeColor = badgeColor,
+				bgColor = bgColor,
+				dimmed = not owned and not isActive,
+				onClick = function()
+					local desc = cat.description or ""
+					if isActive then
+						UIManager.showToast("目前使用中：" .. cat.displayName, Color3.fromRGB(100, 220, 120))
+					elseif owned then
+						showDetailPopup({
+							title = cat.displayName,
+							emoji = emoji,
+							desc = desc,
+							priceText = "已擁有",
+							btnText = "切換使用",
+							btnColor = Color3.fromRGB(50, 120, 210),
+							onConfirm = function()
+								getRemote("SelectCat"):FireServer(cat.id)
+								UIManager.showToast("切換至 " .. cat.displayName, Color3.fromRGB(100, 200, 255))
+								task.delay(0.3, function() UIManager.openShopPanel("cats") end)
+							end,
+						})
+					else
+						showDetailPopup({
+							title = cat.displayName,
+							emoji = emoji,
+							desc = desc,
+							priceText = cat.price .. " Robux",
+							btnText = "購買 " .. cat.price .. " RB",
+							btnColor = Color3.fromRGB(200, 110, 10),
+							onConfirm = function()
+								getRemote("PurchaseCat"):FireServer(cat.id)
+							end,
+						})
+					end
+				end,
+			})
 		end
 	end
 
+	-- ── 裝備 tab ────────────────────────────────────────────────
 	local function showEquipTab()
-		clearScroll()
-		-- 固定排序：項圈 → 帽子 → 武器
-		local slotOrder = { { id = "collar", name = "項圈" }, { id = "hat", name = "帽子" }, { id = "weapon", name = "武器" } }
+		clearGrid()
+		local slotOrder = {
+			{ id="collar", name="項圈" },
+			{ id="hat",    name="帽子" },
+			{ id="weapon", name="武器" },
+		}
 		local order = 0
 		for _, slotDef in ipairs(slotOrder) do
 			local slotId = slotDef.id
@@ -454,45 +733,66 @@ function UIManager.openShopPanel(startTab: string?)
 			for _, item in ipairs(items) do
 				order += 1
 				local equipped = cachedEquipment[slotId] == item.id
-				local atkStr = item.statBonus.attack ~= 0 and string.format(" ATK%+d", item.statBonus.attack) or ""
-				local defStr = item.statBonus.defense ~= 0 and string.format(" DEF%+d", item.statBonus.defense) or ""
-				local hpStr  = item.statBonus.maxHp   ~= 0 and string.format(" HP%+d",  item.statBonus.maxHp)  or ""
-				local spdStr = item.statBonus.speed   ~= 0 and string.format(" SPD%+d", item.statBonus.speed)  or ""
-				local stats = (atkStr .. defStr .. hpStr .. spdStr):gsub("^ ", "")
-				local rightText = "[" .. slotName .. "]\n" .. (stats ~= "" and stats or "—")
-				local card
-				if equipped then
-					card = buildCard(scroll, item.displayName, item.description, rightText,
-						"✓ 已裝備", Color3.new(0, 0, 0), nil, slotId)
-					-- 卸下按鈕疊加
-					local unequipBtn = createButton(card, "卸下",
-						UDim2.new(0.79, 0, 0.55, 0), UDim2.new(0.19, 0, 0.35, 0),
-						Color3.fromRGB(140, 40, 40))
-					unequipBtn.TextSize = 12
-					unequipBtn.ZIndex = 25
-					local uCorner = Instance.new("UICorner")
-					uCorner.CornerRadius = UDim.new(0, 5)
-					uCorner.Parent = unequipBtn
-					unequipBtn.MouseButton1Click:Connect(function()
-						getRemote("UnequipItem"):FireServer(slotId)
-						cachedEquipment[slotId] = nil
-						UIManager.openShopPanel("equip")
-					end)
-				else
-					card = buildCard(scroll, item.displayName, item.description, rightText,
-						item.price .. " 金",
-						Color3.fromRGB(50, 150, 60), function()
-							getRemote("BuyEquipment"):FireServer(item.id)
-							task.delay(0.3, function() UIManager.openShopPanel("equip") end)
-						end, slotId)
-				end
-				if card then card.LayoutOrder = order end
+				local emoji = ICON_EMOJI[item.id] or "📦"
+				local bgColor = ICON_COLORS[slotId] or Color3.fromRGB(80, 80, 120)
+
+				local atkStr = item.statBonus.attack ~= 0 and string.format("ATK%+d ", item.statBonus.attack) or ""
+				local defStr = item.statBonus.defense ~= 0 and string.format("DEF%+d ", item.statBonus.defense) or ""
+				local hpStr  = item.statBonus.maxHp   ~= 0 and string.format("HP%+d ",  item.statBonus.maxHp)  or ""
+				local spdStr = item.statBonus.speed   ~= 0 and string.format("SPD%+d ", item.statBonus.speed)  or ""
+				local statsText = (atkStr .. defStr .. hpStr .. spdStr):gsub(" $", "")
+
+				local badgeText = equipped and "✓ 裝備中" or (item.price .. " 金")
+				local badgeColor = equipped and Color3.fromRGB(40, 160, 80) or Color3.fromRGB(50, 130, 50)
+
+				buildIconCard(gridScroll, order, {
+					id = item.id,
+					emoji = emoji,
+					name = "[" .. slotName .. "] " .. item.displayName,
+					badgeText = badgeText,
+					badgeColor = badgeColor,
+					bgColor = bgColor,
+					dimmed = false,
+					onClick = function()
+						if equipped then
+							showDetailPopup({
+								title = item.displayName,
+								emoji = emoji,
+								desc = item.description,
+								stats = statsText,
+								priceText = "已裝備於 " .. slotName .. " 槽",
+								btnText = "卸下裝備",
+								btnColor = Color3.fromRGB(160, 40, 40),
+								onConfirm = function()
+									getRemote("UnequipItem"):FireServer(slotId)
+									cachedEquipment[slotId] = nil
+									task.delay(0.2, function() UIManager.openShopPanel("equip") end)
+								end,
+							})
+						else
+							showDetailPopup({
+								title = item.displayName,
+								emoji = emoji,
+								desc = item.description,
+								stats = statsText,
+								priceText = item.price .. " 金幣",
+								btnText = "購買並裝備",
+								btnColor = Color3.fromRGB(50, 150, 60),
+								onConfirm = function()
+									getRemote("BuyEquipment"):FireServer(item.id)
+									task.delay(0.3, function() UIManager.openShopPanel("equip") end)
+								end,
+							})
+						end
+					end,
+				})
 			end
 		end
 	end
 
+	-- ── 合成 tab ────────────────────────────────────────────────
 	local function showSynthesisTab()
-		clearScroll()
+		clearGrid()
 		local specialCats = {
 			"shadowCat", "flameCat", "frostCat", "thunderCat",
 			"sakuraCat", "orangeCat", "calicoCat", "tuxedoCat",
@@ -502,37 +802,58 @@ function UIManager.openShopPanel(startTab: string?)
 			if not cat then continue end
 			local frags = cachedFragments[catId] or 0
 			local owned = playerData.ownedCats and playerData.ownedCats[catId]
-			local fragText = string.format("%d / 10 碎片", frags)
-			local fd = { current = frags, max = 10 }
-			local card
+			local emoji = ICON_EMOJI[catId] or "✨"
+			local bgColor = ICON_COLORS[catId] or Color3.fromRGB(80, 80, 120)
+			local pct = frags / 10
+
+			local badgeText, badgeColor
 			if owned then
-				card = buildCard(scroll, cat.displayName, cat.description, fragText,
-					"✓ 已擁有", Color3.new(0, 0, 0), nil, catId, fd)
+				badgeText = "✓ 已擁有"
+				badgeColor = Color3.fromRGB(40, 140, 80)
 			elseif frags >= 10 then
-				card = buildCard(scroll, cat.displayName, cat.description, fragText,
-					"合成！", Color3.fromRGB(160, 60, 220), function()
-						getRemote("SynthesizeCat"):FireServer(catId)
-						task.delay(0.5, function() UIManager.openShopPanel("synth") end)
-					end, catId, fd)
+				badgeText = "可合成！"
+				badgeColor = Color3.fromRGB(140, 40, 200)
 			else
-				card = buildCard(scroll, cat.displayName, cat.description, fragText,
-					"待收集", Color3.fromRGB(80, 80, 100), nil, catId, fd)
+				badgeText = string.format("%d/10", frags)
+				badgeColor = Color3.fromRGB(50, 60, 100)
 			end
-			if card then card.LayoutOrder = i end
+
+			buildIconCard(gridScroll, i, {
+				id = catId,
+				emoji = emoji,
+				name = cat.displayName,
+				badgeText = badgeText,
+				badgeColor = badgeColor,
+				bgColor = bgColor,
+				dimmed = not owned and frags == 0,
+				onClick = function()
+					showDetailPopup({
+						title = cat.displayName,
+						emoji = emoji,
+						desc = cat.description,
+						priceText = owned and "已擁有" or string.format("碎片 %d / 10", frags),
+						btnText = frags >= 10 and "立即合成！" or nil,
+						btnColor = Color3.fromRGB(150, 50, 220),
+						onConfirm = (not owned and frags >= 10) and function()
+							getRemote("SynthesizeCat"):FireServer(catId)
+							task.delay(0.5, function() UIManager.openShopPanel("synth") end)
+						end or nil,
+						fragData = { current = frags, max = 10 },
+					})
+				end,
+			})
 		end
 	end
 
-	-- Tab 建立
+	-- ── Tab 按鈕 ────────────────────────────────────────────────
 	local tabs = {
-		{ name = "🐱 貓咪", key = "cats", fn = showCatsTab },
+		{ name = "🐱 貓咪", key = "cats",  fn = showCatsTab },
 		{ name = "⚔ 裝備",  key = "equip", fn = showEquipTab },
-		{ name = "✨ 合成", key = "synth", fn = showSynthesisTab },
+		{ name = "✨ 合成",  key = "synth", fn = showSynthesisTab },
 	}
-	scroll.Position = UDim2.new(0, 0, 0.21, 0)
-	scroll.Size = UDim2.new(1, 0, 0.79, 0)
 
-	local activeTabColor = Color3.fromRGB(60, 80, 160)
-	local inactiveTabColor = Color3.fromRGB(28, 28, 50)
+	local activeTabColor   = Color3.fromRGB(50, 70, 160)
+	local inactiveTabColor = Color3.fromRGB(20, 20, 40)
 	local tabBtns: { [string]: TextButton } = {}
 
 	local function activateTab(key: string)
@@ -543,13 +864,11 @@ function UIManager.openShopPanel(startTab: string?)
 
 	for i, tab in ipairs(tabs) do
 		local btn = createButton(tabBar, tab.name,
-			UDim2.new((i - 1) / 3, 1, 0, 1), UDim2.new(1 / 3, -2, 1, -2),
+			UDim2.new((i - 1) / 3, 2, 0, 2), UDim2.new(1 / 3, -4, 1, -4),
 			inactiveTabColor)
 		btn.TextSize = 14
 		btn.ZIndex = 23
-		local tc = Instance.new("UICorner")
-		tc.CornerRadius = UDim.new(0, 5)
-		tc.Parent = btn
+		local tc = Instance.new("UICorner"); tc.CornerRadius = UDim.new(0, 8); tc.Parent = btn
 		tabBtns[tab.key] = btn
 		btn.MouseButton1Click:Connect(function()
 			activateTab(tab.key)
@@ -557,14 +876,10 @@ function UIManager.openShopPanel(startTab: string?)
 		end)
 	end
 
-	-- 依 startTab 決定預設分頁
 	local defaultKey = startTab or "cats"
 	local defaultFn = showCatsTab
 	for _, tab in ipairs(tabs) do
-		if tab.key == defaultKey then
-			defaultFn = tab.fn
-			break
-		end
+		if tab.key == defaultKey then defaultFn = tab.fn; break end
 	end
 	activateTab(defaultKey)
 	defaultFn()
