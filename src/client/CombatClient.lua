@@ -323,54 +323,50 @@ end
 -- 快捷鍵對應（第 2–6 槽）
 
 -- ── 音效系統 ─────────────────────────────────────────────────────
--- 使用預先載入的固定 Sound 物件，避免連點時重複建立導致無聲/喇叭聲
+-- 所有音效放在 SoundService（2D，全域播放），避免 3D 定位的載入延遲問題
+-- 使用 ContentProvider:PreloadAsync 確保音效下載完成再播放
 
-local soundFolder = Instance.new("Folder")
-soundFolder.Name  = "CatBattleSounds"
-soundFolder.Parent = game:GetService("SoundService")
+local SoundService = game:GetService("SoundService")
+local ContentProvider = game:GetService("ContentProvider")
+local Debris = game:GetService("Debris")
 
-local function makeSound(id: string, vol: number): Sound
-	local s = Instance.new("Sound")
-	s.SoundId = id
-	s.Volume  = vol
-	s.RollOffMaxDistance = 80
-	s.Parent  = soundFolder
-	return s
-end
-
--- 確認可用的 Roblox 免費 Sound Asset
-local SFX = {
-	-- 攻擊揮爪：swoosh 風聲
-	attack  = makeSound("rbxassetid://186311218", 0.75),
-	-- 命中打擊：punch
-	hit     = makeSound("rbxassetid://131961136", 0.80),
-	-- 被 NPC 擊中：受傷聲
-	hurt    = makeSound("rbxassetid://131961136", 0.60),
-	-- 金幣掉落
-	coin    = makeSound("rbxassetid://256804995", 0.85),
-	-- 碎片掉落：魔法音
-	magic   = makeSound("rbxassetid://847061203", 0.90),
+-- 音效 ID 表（Roblox 官方免費 Sound 類型）
+local SFX_IDS = {
+	attack = "rbxassetid://186311218",  -- swoosh
+	hit    = "rbxassetid://131961136",  -- punch
+	hurt   = "rbxassetid://131961136",  -- 受傷（與 hit 相同，音量不同）
+	coin   = "rbxassetid://256804995",  -- 金幣
+	magic  = "rbxassetid://847061203",  -- 魔法
 }
 
--- 播放音效（直接用固定物件，停止後重播）
-local function playSound(sfx: Sound, position: Vector3?)
-	sfx:Stop()
-	if position then
-		-- 3D 定位：暫時把 Sound 放到位置附近的 workspace Part
-		local p = Instance.new("Part")
-		p.Anchored    = true
-		p.CanCollide  = false
-		p.Transparency = 1
-		p.Size        = Vector3.new(0.1, 0.1, 0.1)
-		p.Position    = position
-		p.Parent      = workspace
-		local s2 = sfx:Clone()
-		s2.Parent = p
-		s2:Play()
-		game:GetService("Debris"):AddItem(p, 3)
-	else
-		sfx:Play()
+-- 建立 Sound 物件並掛在 SoundService
+local SFX: { [string]: Sound } = {}
+for name, id in pairs(SFX_IDS) do
+	local s = Instance.new("Sound")
+	s.Name   = "CatSFX_" .. name
+	s.SoundId = id
+	s.Volume  = 0.8
+	s.Parent  = SoundService
+	SFX[name] = s
+end
+SFX.hurt.Volume = 0.65
+
+-- 預載所有音效（非同步，背景下載）
+task.spawn(function()
+	local assets = {}
+	for _, id in pairs(SFX_IDS) do
+		table.insert(assets, id)
 	end
+	pcall(function()
+		ContentProvider:PreloadAsync(assets)
+	end)
+end)
+
+-- 播放音效（直接 Play，不建立新實例，不做 3D 定位）
+local function playSound(sfx: Sound, _pos: Vector3?)
+	-- 停止上一次播放再重播，確保連打時每次都有聲音
+	sfx:Stop()
+	sfx:Play()
 end
 
 local KEY_BINDINGS: { [Enum.KeyCode]: number } = {
