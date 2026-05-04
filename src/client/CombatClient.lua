@@ -297,7 +297,20 @@ local SKILL_VFX: { [string]: (pos: Vector3) -> () } = {
 
 -- ── 主特效入口 ────────────────────────────────────────────────────
 -- VFX cooldown：BasicSwipe 最小間隔 0.12 秒，避免連打時粒子堆疊暈開
+local lastVfxTime: { [string]: number } = {}
+local VFX_COOLDOWN: { [string]: number } = {
+	BasicSwipe = 0.12,
+}
+
 local function spawnAttackVFX(skillId: string, hitPos: Vector3)
+	local now = os.clock()
+	local cd = VFX_COOLDOWN[skillId]
+	if cd then
+		local last = lastVfxTime[skillId] or 0
+		if now - last < cd then return end
+		lastVfxTime[skillId] = now
+	end
+
 	local weaponId = CombatClient.currentWeapon
 	local weaponFn = (weaponId and WEAPON_VFX[weaponId]) or defaultWeaponVFX
 	weaponFn(hitPos)
@@ -309,8 +322,17 @@ end
 
 -- 快捷鍵對應（第 2–6 槽）
 
+-- 確認可用的 Roblox 官方免費音效 ID（均為 Sound 類型）
+-- 攻擊/打擊：rbxassetid://186311218  (swoosh/hit)
+-- 金幣：      rbxassetid://256804995  (coin pickup)
+-- 碎片魔法：  rbxassetid://847061203  (magic sparkle)
+local SAFE_SOUNDS = {
+	hit    = "rbxassetid://186311218",
+	coin   = "rbxassetid://256804995",
+	magic  = "rbxassetid://847061203",
+}
+
 local function playOneShotSound(soundId: string, position: Vector3?, volume: number?)
-	local ok, err = pcall(function()
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.Volume = volume or 0.8
@@ -330,10 +352,6 @@ local function playOneShotSound(soundId: string, position: Vector3?, volume: num
 		sound.Parent = workspace
 		sound:Play()
 		game:GetService("Debris"):AddItem(sound, 2)
-	end
-	end)
-	if not ok then
-		-- 音效載入失敗時靜默忽略（Asset 類型不符或 ID 無效）
 	end
 end
 
@@ -373,29 +391,23 @@ end
 -- Forward declaration：triggerSwingForSkill 定義在後段，需先宣告避免 nil 呼叫
 local triggerSwingForSkill: (skillId: string) -> ()
 
--- 基礎攻擊整體 cooldown（伺服器驗證約 0.3 秒一次）
-local lastBasicAttackTime = 0
-local BASIC_ATTACK_CD = 0.30  -- 秒
-
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
-	local now = os.clock()
-	if now - lastBasicAttackTime < BASIC_ATTACK_CD then return end
-	lastBasicAttackTime = now
-
 	local char = localPlayer.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
 	local instanceId, hitPos = getMouseTarget(inputPos)
+	
+	-- 無論是否打中 NPC，都播放揮手動作與聲音，提供操作回饋
 	local vfxPos = hitPos or (root.Position + root.CFrame.LookVector * 3)
-
+	
 	if instanceId then
 		useSkillEvent:FireServer("BasicSwipe", instanceId)
 	end
-
+	
 	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://131961136", vfxPos, 0.7)
+	playOneShotSound(SAFE_SOUNDS.hit, vfxPos, 0.7)
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -439,7 +451,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playOneShotSound("rbxassetid://131961136", position, isCrit and 1 or 0.8)  -- 打擊音效
+	playOneShotSound(SAFE_SOUNDS.hit, position, isCrit and 1 or 0.8)
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,
@@ -818,7 +830,7 @@ local function playDropCoins(pos: Vector3, amount: number)
 	end)
 
 	-- 金幣音效（輕盈的叮叮聲）
-	playOneShotSound("rbxassetid://267401236", pos, 0.9)  -- 金幣音效（爽脆）
+	playOneShotSound(SAFE_SOUNDS.coin, pos, 0.9)
 end
 
 -- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
@@ -910,7 +922,7 @@ local function playDropFragment(pos: Vector3, catId: string)
 	end)
 
 	-- 碎片音效（神秘晶體聲）
-	playOneShotSound("rbxassetid://178452217", pos, 1.0)  -- 碎片音效
+	playOneShotSound(SAFE_SOUNDS.magic, pos, 1.0)
 end
 
 -- 處理 NPCDrops 事件
