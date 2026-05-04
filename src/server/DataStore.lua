@@ -33,6 +33,7 @@ function DataStore.getDefaultData(player: Player): PlayerData
 		ownedCats = { whiteCat = true },
 		activeCatId = "whiteCat",
 		equipment = { collar = nil, hat = nil, weapon = nil },
+		ownedItems = {},
 		unlockedSkills = { BasicSwipe = true },
 		catFragments = {},
 		activeColorShiftMode = nil,

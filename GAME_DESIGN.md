@@ -14,7 +14,7 @@
 | 等級 / 經驗值 | ✅ | ✅ | XP bar + 升級 toast |
 | 技能系統 | ✅ | ✅ | 技能列 Q/E/R/F，冷卻 overlay |
 | 基礎攻擊 / 點擊 NPC | ✅ | ✅ | CombatClient 射線偵測 |
-| 武器 / 裝備系統 | ✅ | ✅ | 含角色 3D 外觀配件（EquipmentAppearance） | 商城裝備 tab + 裝備面板（⚔ 按鈕） |
+| 武器 / 裝備系統 | ✅ | ✅ | ownedItems 永久持有，背包面板穿戴/卸下，商城只購買 | 商城裝備 tab + 裝備面板（⚔ 按鈕） |
 | 商城（Robux 買貓） | ✅ | ✅ | 商城貓咪 tab |
 | 商城（金幣買裝備） | ✅ | ✅ | 商城裝備 tab，BuyEquipment 事件 |
 | 寵物合成系統 | ✅ | ✅ | 碎片 drop + 合成後端 + 合成 tab |

@@ -88,6 +88,7 @@ export type PlayerData = {
 	ownedCats: { [string]: boolean },
 	activeCatId: string,
 	equipment: EquipmentLoadout,
+	ownedItems: { [string]: boolean },   -- 已購買的裝備 ID（永久持有，不因卸下消失）
 	unlockedSkills: { [string]: boolean },
 	catFragments: { [string]: number },  -- 各特殊貓的碎片數量，10 片可合成
 	activeColorShiftMode: string?,

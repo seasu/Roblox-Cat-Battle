@@ -186,13 +186,13 @@ function UIManager.buildMenuButtons()
 		UIManager.openShopPanel("cats")
 	end)
 
-	-- 裝備按鈕（左下）— 直接開商城裝備 tab
-	local equipBtn = createButton(screenGui, "⚔ 裝備",
+	-- 背包按鈕（左下）— 管理已擁有裝備、穿戴/卸下
+	local equipBtn = createButton(screenGui, "🎒 背包",
 		UDim2.new(0.01, 0, 0.88, 0),
 		UDim2.new(0.13, 0, 0.055, 0),
 		Color3.fromRGB(60, 80, 160))
 	equipBtn.MouseButton1Click:Connect(function()
-		UIManager.openShopPanel("equip")
+		UIManager.openInventoryPanel()
 	end)
 
 	-- PvP 按鈕（中下）
@@ -716,9 +716,10 @@ function UIManager.openShopPanel(startTab: string?)
 		end
 	end
 
-	-- ── 裝備 tab ────────────────────────────────────────────────
+	-- ── 裝備 tab（商城：只顯示購買，已擁有請至背包穿戴） ─────────
 	local function showEquipTab()
 		clearGrid()
+		local ownedItems = getFunction("GetOwnedItems"):InvokeServer()
 		local slotOrder = {
 			{ id="collar", name="項圈" },
 			{ id="hat",    name="帽子" },
@@ -732,7 +733,7 @@ function UIManager.openShopPanel(startTab: string?)
 			table.sort(items, function(a, b) return a.price < b.price end)
 			for _, item in ipairs(items) do
 				order += 1
-				local equipped = cachedEquipment[slotId] == item.id
+				local owned = ownedItems[item.id] == true
 				local emoji = ICON_EMOJI[item.id] or "📦"
 				local bgColor = ICON_COLORS[slotId] or Color3.fromRGB(80, 80, 120)
 
@@ -742,8 +743,8 @@ function UIManager.openShopPanel(startTab: string?)
 				local spdStr = item.statBonus.speed   ~= 0 and string.format("SPD%+d ", item.statBonus.speed)  or ""
 				local statsText = (atkStr .. defStr .. hpStr .. spdStr):gsub(" $", "")
 
-				local badgeText = equipped and "✓ 裝備中" or (item.price .. " 金")
-				local badgeColor = equipped and Color3.fromRGB(40, 160, 80) or Color3.fromRGB(50, 130, 50)
+				local badgeText = owned and "✓ 已購買" or (item.price .. " 金")
+				local badgeColor = owned and Color3.fromRGB(40, 110, 180) or Color3.fromRGB(50, 130, 50)
 
 				buildIconCard(gridScroll, order, {
 					id = item.id,
@@ -752,22 +753,17 @@ function UIManager.openShopPanel(startTab: string?)
 					badgeText = badgeText,
 					badgeColor = badgeColor,
 					bgColor = bgColor,
-					dimmed = false,
+					dimmed = owned,  -- 已擁有變暗（示意不可重複購買）
 					onClick = function()
-						if equipped then
+						if owned then
 							showDetailPopup({
 								title = item.displayName,
 								emoji = emoji,
 								desc = item.description,
 								stats = statsText,
-								priceText = "已裝備於 " .. slotName .. " 槽",
-								btnText = "卸下裝備",
-								btnColor = Color3.fromRGB(160, 40, 40),
-								onConfirm = function()
-									getRemote("UnequipItem"):FireServer(slotId)
-									cachedEquipment[slotId] = nil
-									task.delay(0.2, function() UIManager.openShopPanel("equip") end)
-								end,
+								priceText = "已購買 — 請至🎒背包穿戴",
+								btnText = nil,
+								btnColor = Color3.fromRGB(50, 50, 80),
 							})
 						else
 							showDetailPopup({
@@ -776,7 +772,7 @@ function UIManager.openShopPanel(startTab: string?)
 								desc = item.description,
 								stats = statsText,
 								priceText = item.price .. " 金幣",
-								btnText = "購買並裝備",
+								btnText = "購買（" .. item.price .. " 金）",
 								btnColor = Color3.fromRGB(50, 150, 60),
 								onConfirm = function()
 									getRemote("BuyEquipment"):FireServer(item.id)
@@ -1203,6 +1199,200 @@ function UIManager.openPvPPanel()
 	refreshBtn.MouseButton1Click:Connect(refreshPlayerList)
 
 	refreshPlayerList()
+end
+
+-- ── 背包面板（管理已擁有裝備的穿戴/卸下） ────────────────────────────
+
+function UIManager.openInventoryPanel()
+	local playerData = getFunction("GetPlayerData"):InvokeServer()
+	if not playerData then return end
+	local ownedItems = getFunction("GetOwnedItems"):InvokeServer()
+	cachedEquipment = playerData.equipment or {}
+
+	-- 底框
+	local overlay = createFrame(screenGui,
+		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 1, 0),
+		Color3.new(0, 0, 0), 0.5)
+	overlay.ZIndex = 20
+
+	local panel = createFrame(overlay,
+		UDim2.new(0.04, 0, 0.04, 0), UDim2.new(0.92, 0, 0.92, 0),
+		Color3.fromRGB(14, 18, 26), 0.04)
+	panel.ZIndex = 21
+	local panelCorner = Instance.new("UICorner")
+	panelCorner.CornerRadius = UDim.new(0, 18)
+	panelCorner.Parent = panel
+
+	-- 標題
+	local titleLbl = createLabel(panel, "🎒 背包 — 裝備管理",
+		UDim2.new(0.03, 0, 0.01, 0), UDim2.new(0.7, 0, 0.07, 0), 22)
+	titleLbl.ZIndex = 22
+
+	local closeBtn = createButton(panel, "✕",
+		UDim2.new(0.88, 0, 0.015, 0), UDim2.new(0.1, 0, 0.065, 0),
+		Color3.fromRGB(160, 40, 40))
+	closeBtn.ZIndex = 22
+	local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0,10); cc.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(function() overlay:Destroy() end)
+
+	-- 目前裝備槽位顯示（頂部三格）
+	local slotBar = createFrame(panel,
+		UDim2.new(0.02, 0, 0.09, 0), UDim2.new(0.96, 0, 0.14, 0),
+		Color3.fromRGB(10, 14, 24), 0.15)
+	slotBar.ZIndex = 22
+	local slotCorner = Instance.new("UICorner"); slotCorner.CornerRadius = UDim.new(0,10); slotCorner.Parent = slotBar
+
+	local SLOTS = {
+		{ id="collar", name="項圈", emoji="🔗" },
+		{ id="hat",    name="帽子", emoji="🎩" },
+		{ id="weapon", name="武器", emoji="⚔️" },
+	}
+
+	-- 格狀物品區（下方）
+	local gridScroll, gridLayout = makeGridScroll(panel, UDim2.new(0,0,0,0))
+	gridScroll.Position = UDim2.new(0, 0, 0.245, 0)
+	gridScroll.Size = UDim2.new(1, 0, 0.755, 0)
+	gridLayout.CellSize = UDim2.new(0, 130, 0, 150)
+	gridLayout.FillDirectionMaxCells = 4
+
+	-- 刷新整個面板（裝備操作後呼叫）
+	local slotFrames: { [string]: Frame } = {}
+
+	local function refreshSlotBar()
+		for _, sf in pairs(slotFrames) do sf:Destroy() end
+		slotFrames = {}
+		for i, slotDef in ipairs(SLOTS) do
+			local sf = createFrame(slotBar,
+				UDim2.new((i-1)/3 + 0.01, 0, 0.05, 0),
+				UDim2.new(0.32, 0, 0.9, 0),
+				Color3.fromRGB(22, 28, 44), 0.1)
+			sf.ZIndex = 23
+			local sfc = Instance.new("UICorner"); sfc.CornerRadius = UDim.new(0,8); sfc.Parent = sf
+			slotFrames[slotDef.id] = sf
+
+			local equippedId = cachedEquipment[slotDef.id]
+			local equippedItem = equippedId and EquipmentData.getItemById(equippedId)
+
+			local slotEmoji = equippedItem and (ICON_EMOJI[equippedId] or slotDef.emoji) or slotDef.emoji
+			local slotText = equippedItem and equippedItem.displayName or ("— " .. slotDef.name .. " —")
+			local slotColor = equippedItem and Color3.fromRGB(100, 200, 120) or Color3.fromRGB(120, 120, 140)
+
+			local eLbl = Instance.new("TextLabel")
+			eLbl.Size = UDim2.new(0.3, 0, 1, 0)
+			eLbl.BackgroundTransparency = 1
+			eLbl.Text = slotEmoji
+			eLbl.TextScaled = true
+			eLbl.Font = Enum.Font.GothamBold
+			eLbl.TextColor3 = Color3.new(1,1,1)
+			eLbl.ZIndex = 24
+			eLbl.Parent = sf
+
+			local nLbl = createLabel(sf, slotText,
+				UDim2.new(0.32, 0, 0.1, 0), UDim2.new(0.66, 0, 0.8, 0), 12)
+			nLbl.TextColor3 = slotColor
+			nLbl.Font = Enum.Font.GothamBold
+			nLbl.TextScaled = true
+			nLbl.ZIndex = 24
+		end
+	end
+
+	local function refreshGrid()
+		for _, c in ipairs(gridScroll:GetChildren()) do
+			if c:IsA("Frame") then c:Destroy() end
+		end
+
+		-- 統計所有已擁有物品（依槽位排序）
+		local slotOrder = { "collar", "hat", "weapon" }
+		local order = 0
+
+		-- 先顯示「無物品」提示（若背包空）
+		local hasAny = false
+		for _ in pairs(ownedItems) do hasAny = true; break end
+
+		if not hasAny then
+			local hint = createFrame(gridScroll,
+				UDim2.new(0.1, 0, 0.3, 0), UDim2.new(0.8, 0, 0.4, 0),
+				Color3.fromRGB(20, 20, 40), 0.2)
+			hint.ZIndex = 23
+			local hintLbl = createLabel(hint, "背包是空的\n前往🛒商城購買裝備",
+				UDim2.new(0.05, 0, 0.2, 0), UDim2.new(0.9, 0, 0.6, 0), 16)
+			hintLbl.TextXAlignment = Enum.TextXAlignment.Center
+			hintLbl.TextColor3 = Color3.fromRGB(160, 160, 180)
+			hintLbl.Font = Enum.Font.Gotham
+			hintLbl.TextWrapped = true
+			hintLbl.ZIndex = 24
+			return
+		end
+
+		for _, slotId in ipairs(slotOrder) do
+			local items = EquipmentData.getItemsBySlot(slotId)
+			table.sort(items, function(a, b) return a.price < b.price end)
+			for _, item in ipairs(items) do
+				if not ownedItems[item.id] then continue end
+				order += 1
+				local equipped = cachedEquipment[slotId] == item.id
+				local emoji = ICON_EMOJI[item.id] or "📦"
+				local bgColor = ICON_COLORS[slotId] or Color3.fromRGB(80, 80, 120)
+
+				local atkStr = item.statBonus.attack ~= 0 and string.format("ATK%+d ", item.statBonus.attack) or ""
+				local defStr = item.statBonus.defense ~= 0 and string.format("DEF%+d ", item.statBonus.defense) or ""
+				local hpStr  = item.statBonus.maxHp   ~= 0 and string.format("HP%+d ",  item.statBonus.maxHp)  or ""
+				local spdStr = item.statBonus.speed   ~= 0 and string.format("SPD%+d ", item.statBonus.speed)  or ""
+				local statsText = (atkStr .. defStr .. hpStr .. spdStr):gsub(" $", "")
+
+				local badgeText = equipped and "✓ 裝備中" or "點擊裝備"
+				local badgeColor = equipped and Color3.fromRGB(40, 160, 80) or Color3.fromRGB(60, 80, 160)
+
+				buildIconCard(gridScroll, order, {
+					id = item.id,
+					emoji = emoji,
+					name = item.displayName,
+					badgeText = badgeText,
+					badgeColor = badgeColor,
+					bgColor = bgColor,
+					dimmed = false,
+					onClick = function()
+						if equipped then
+							showDetailPopup({
+								title = item.displayName,
+								emoji = emoji,
+								desc = item.description,
+								stats = statsText,
+								priceText = "裝備中 — " .. (slotId == "collar" and "項圈" or slotId == "hat" and "帽子" or "武器") .. "槽",
+								btnText = "卸下",
+								btnColor = Color3.fromRGB(160, 40, 40),
+								onConfirm = function()
+									getRemote("UnequipItem"):FireServer(slotId)
+									cachedEquipment[slotId] = nil
+									refreshSlotBar()
+									refreshGrid()
+								end,
+							})
+						else
+							showDetailPopup({
+								title = item.displayName,
+								emoji = emoji,
+								desc = item.description,
+								stats = statsText,
+								priceText = "點擊確認裝備",
+								btnText = "裝備",
+								btnColor = Color3.fromRGB(50, 130, 220),
+								onConfirm = function()
+									getRemote("EquipItem"):FireServer(item.id)
+									cachedEquipment[slotId] = item.id
+									refreshSlotBar()
+									refreshGrid()
+								end,
+							})
+						end
+					end,
+				})
+			end
+		end
+	end
+
+	refreshSlotBar()
+	refreshGrid()
 end
 
 return UIManager

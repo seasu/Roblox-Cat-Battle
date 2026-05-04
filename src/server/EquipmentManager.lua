@@ -18,6 +18,13 @@ function EquipmentManager.handleEquip(player: Player, itemId: string)
 		warn("[EquipmentManager] 無效的 itemId：", itemId)
 		return
 	end
+	-- 確保 ownedItems 存在（舊存檔相容）
+	if not data.ownedItems then data.ownedItems = {} end
+	-- 驗證擁有權
+	if not data.ownedItems[itemId] then
+		warn("[EquipmentManager] 玩家未擁有此物品：", itemId)
+		return
+	end
 	data.equipment[item.slot] = itemId
 	equipmentChangedEvent:FireClient(player, data.equipment)
 end
@@ -28,6 +35,12 @@ function EquipmentManager.handleUnequip(player: Player, slot: string)
 	if slot ~= "collar" and slot ~= "hat" and slot ~= "weapon" then return end
 	data.equipment[slot] = nil
 	equipmentChangedEvent:FireClient(player, data.equipment)
+end
+
+function EquipmentManager.getOwnedItems(player: Player): { [string]: boolean }
+	local data = DataStore.getData(player)
+	if not data then return {} end
+	return data.ownedItems or {}
 end
 
 function EquipmentManager.getTotalStats(player: Player): CatStats
