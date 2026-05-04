@@ -2,11 +2,11 @@
 
 ## 📍 1. 當前會話快照 (Context Snapshot)
 > **STATUS:** 任務進行中 - 已實作版本管理。
-- **Version:** `v0.1.3`
+- **Version:** `v0.1.4`
 - **Last Sync:** 2026-05-04
 - **Battery Level:** 🟢 [電量充足]
 - **Project Goal:** 打造一款高品質的 Roblox 貓咪戰鬥 RPG 遊戲，具備完整的數值系統、裝備系統與 PvP/PvE 玩法。
-- **Current Task:** 已實作「遊戲內 UI 版本號顯示」，並強化攻擊動畫的壓制邏輯以解決原地攻擊手不動的問題。
+- **Current Task:** 已修復 `getArmMotor` 的邏輯缺陷（原先抓錯 R6/R15 的肩部 Motor6D），確保攻擊動畫能正確找到關節並執行。
 - **Next Step:** 根據 `PRD.md` 與 `GAME_DESIGN.md` 開始開發核心系統。
 
 ---

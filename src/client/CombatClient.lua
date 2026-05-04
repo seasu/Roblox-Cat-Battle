@@ -457,21 +457,22 @@ function CombatClient.onNPCDied(instanceId: string)
 end
 
 -- ── 攻擊揮手動畫 ─────────────────────────────────────────────────
--- 找出手臂的 Motor6D（R6 在 Torso，R15 在 UpperTorso / RightUpperArm）
+-- 找出手臂的 Motor6D (肩部關節)
+-- 邏輯：尋找 Part1 為 Right Arm (R6) 或 RightUpperArm (R15) 的 Motor6D
 local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
-	-- R6：Motor6D 名稱 = "Right Arm" / "Left Arm"，位於 Torso 內
-	local torso = char:FindFirstChild("Torso")
-	if torso then
-		local m = torso:FindFirstChild(side .. " Arm") :: Motor6D?
-		if m and m:IsA("Motor6D") then return m end
+	local targetPartName = (side == "Right") and "Right Arm" or "Left Arm"
+	local targetPartNameR15 = (side == "Right") and "RightUpperArm" or "LeftUpperArm"
+	
+	local armPart = char:FindFirstChild(targetPartName) or char:FindFirstChild(targetPartNameR15)
+	if not armPart or not armPart:IsA("BasePart") then return nil end
+	
+	-- 遍歷角色尋找對應的 Motor6D
+	for _, m in ipairs(char:GetDescendants()) do
+		if m:IsA("Motor6D") and m.Part1 == armPart then
+			return m
+		end
 	end
-	-- R15：Motor6D 名稱 = "RightShoulder" / "LeftShoulder"，位於 UpperTorso 內
-	local upperTorso = char:FindFirstChild("UpperTorso")
-	if upperTorso then
-		local name = side == "Right" and "RightShoulder" or "LeftShoulder"
-		local m = upperTorso:FindFirstChild(name) :: Motor6D?
-		if m and m:IsA("Motor6D") then return m end
-	end
+	
 	return nil
 end
 
