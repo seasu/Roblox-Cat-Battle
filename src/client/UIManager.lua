@@ -750,9 +750,36 @@ function UIManager.showDeathScreen()
 	overlay.Name = "DeathOverlay"
 	overlay.ZIndex = 10
 
-	createLabel(overlay, "你已陣亡...",
-		UDim2.new(0.3, 0, 0.4, 0),
-		UDim2.new(0.4, 0, 0.1, 0), 36).ZIndex = 11
+	local deathLabel = createLabel(overlay, "你已陣亡...",
+		UDim2.new(0.25, 0, 0.38, 0),
+		UDim2.new(0.5, 0, 0.1, 0), 36)
+	deathLabel.ZIndex = 11
+	deathLabel.TextColor3 = Color3.fromRGB(220, 60, 60)
+
+	-- 重生按鈕
+	local btn = Instance.new("TextButton")
+	btn.Name = "RespawnButton"
+	btn.Size = UDim2.new(0, 200, 0, 52)
+	btn.Position = UDim2.new(0.5, -100, 0.52, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+	btn.BorderSizePixel = 0
+	btn.Text = "重生"
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 22
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.ZIndex = 11
+	btn.AutoButtonColor = true
+	btn.Parent = overlay
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		local remoteEvents = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents")
+		local respawnEvent = remoteEvents:WaitForChild("RequestRespawn") :: RemoteEvent
+		respawnEvent:FireServer()
+	end)
 end
 
 function UIManager.hideDeathScreen()

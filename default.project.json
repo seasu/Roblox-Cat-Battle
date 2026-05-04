@@ -43,6 +43,7 @@
         "SkillUnlocked":       { "$className": "RemoteEvent" },
         "CombatHit":           { "$className": "RemoteEvent" },
         "PlayerDied":          { "$className": "RemoteEvent" },
+        "RequestRespawn":      { "$className": "RemoteEvent" },
         "UpdateUI":            { "$className": "RemoteEvent" },
         "RequestPvP":          { "$className": "RemoteEvent" },
         "PvPInvite":           { "$className": "RemoteEvent" },
