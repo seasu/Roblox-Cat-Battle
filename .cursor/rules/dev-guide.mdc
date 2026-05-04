@@ -154,8 +154,10 @@ NPC 採三狀態機（`NPCManager.lua` 的 `npcState` 表）：
 | `return` | 玩家進安全區 / 玩家跑超出 50 格 / 離 home > 65 格 | 速度 × 1.5 快速返回 home |
 
 安全區（`SAFE_ZONES`，NPCManager.lua 頂部定義，需與 WorldSetup 的視覺保持一致）：
-- 出生點圓形：center=(0,0,0)，radius=30
-- 商城矩形：X=−35~35，Z=25~65
+- 出生點圓形：center=(0,0,0)，radius=55
+- 商城矩形：X=−42~42，Z=10~72（完整覆蓋三棟商店建築）
+
+WorldSetup 視覺：Mint 青綠色 SmoothPlastic 地板（透明度 0.72）+ BillboardGui 文字標示
 
 玩偶（doll）不移動，只在攻擊距離（5 格）內且玩家不在安全區時攻擊。
 

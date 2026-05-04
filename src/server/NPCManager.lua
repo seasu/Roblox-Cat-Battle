@@ -26,11 +26,12 @@ local npcState = {}
 -- ── 安全區定義 ─────────────────────────────────────────────────────
 -- 圓形：{type="circle", center=Vector3, radius=number}
 -- 矩形：{type="rect", minX, maxX, minZ, maxZ}
+-- 注意：需與 WorldSetup.server.lua 的地板視覺保持一致
 local SAFE_ZONES = {
-	-- 出生點廣場（SafeZone Part + 周圍緩衝，半徑 30）
-	{ type = "circle", center = Vector3.new(0, 0, 0), radius = 30 },
-	-- 商城攤位區（出生點南方 Z=30~60，X=-35~35）
-	{ type = "rect", minX = -35, maxX = 35, minZ = 25, maxZ = 65 },
+	-- 出生點廣場（半徑 55，覆蓋廣場與路徑起點）
+	{ type = "circle", center = Vector3.new(0, 0, 0), radius = 55 },
+	-- 商城攤位區（X=-42~42, Z=10~72，完整包含三棟建築）
+	{ type = "rect", minX = -42, maxX = 42, minZ = 10, maxZ = 72 },
 }
 
 -- 追逐參數
