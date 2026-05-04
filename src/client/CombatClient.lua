@@ -809,6 +809,88 @@ function CombatClient.onNPCDrops(pos: Vector3, coins: number, fragmentCatId: str
 	end
 end
 
+-- ── 武器外觀道具 ──────────────────────────────────────────────────
+
+local function makeProp(char: Model, size: Vector3, color: Color3,
+	material: Enum.Material, shape: Enum.PartType?): Part
+	local p = Instance.new("Part")
+	p.Name = "WeaponProp"
+	p.Size = size
+	p.Color = color
+	p.Material = material
+	p.CanCollide = false
+	p.Anchored = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then p.Shape = shape end
+	p.Parent = char
+	return p
+end
+
+local function weldProp(base: BasePart, prop: Part, cf: CFrame)
+	local w = Instance.new("Weld")
+	w.Part0 = base
+	w.Part1 = prop
+	w.C0 = cf
+	w.C1 = CFrame.new()
+	w.Parent = prop
+end
+
+local WEAPON_BUILDERS: { [string]: (hand: BasePart, char: Model, isR6: boolean) -> () } = {
+	weaponClaws = function(hand, char, isR6)
+		local yBase = isR6 and -0.85 or -0.25
+		for i = -1, 1 do
+			local claw = makeProp(char, Vector3.new(0.08, 0.48, 0.08),
+				Color3.fromRGB(110, 115, 130), Enum.Material.Metal)
+			weldProp(hand, claw, CFrame.new(i * 0.14, yBase, -0.2) * CFrame.Angles(0.25, 0, 0))
+		end
+	end,
+	weaponSword = function(hand, char, isR6)
+		local yBase = isR6 and -0.8 or -0.2
+		local blade = makeProp(char, Vector3.new(0.1, 1.3, 0.06),
+			Color3.fromRGB(200, 215, 225), Enum.Material.Metal)
+		weldProp(hand, blade, CFrame.new(0, yBase, -0.08))
+		local guard = makeProp(char, Vector3.new(0.42, 0.07, 0.1),
+			Color3.fromRGB(180, 150, 55), Enum.Material.Metal)
+		weldProp(hand, guard, CFrame.new(0, yBase + 0.7, -0.08))
+	end,
+	weaponShield = function(hand, char, isR6)
+		local yBase = isR6 and -0.3 or -0.1
+		local shield = makeProp(char, Vector3.new(0.75, 0.85, 0.1),
+			Color3.fromRGB(170, 130, 55), Enum.Material.SmoothPlastic)
+		weldProp(hand, shield, CFrame.new(0, yBase, -0.3))
+		local boss = makeProp(char, Vector3.new(0.2, 0.2, 0.1),
+			Color3.fromRGB(220, 200, 100), Enum.Material.Metal, Enum.PartType.Ball)
+		weldProp(hand, boss, CFrame.new(0, yBase, -0.37))
+	end,
+	weaponStaff = function(hand, char, isR6)
+		local yBase = isR6 and -1.0 or -0.3
+		local shaft = makeProp(char, Vector3.new(0.08, 1.8, 0.08),
+			Color3.fromRGB(140, 90, 40), Enum.Material.Wood)
+		weldProp(hand, shaft, CFrame.new(0, yBase, 0))
+		local orb = makeProp(char, Vector3.new(0.23, 0.23, 0.23),
+			Color3.fromRGB(180, 80, 255), Enum.Material.Neon, Enum.PartType.Ball)
+		weldProp(hand, orb, CFrame.new(0, yBase + 0.9, 0))
+	end,
+}
+
+function CombatClient.updateWeaponProp(weaponId: string?)
+	local char = localPlayer.Character
+	if not char then return end
+	for _, obj in ipairs(char:GetDescendants()) do
+		if obj.Name == "WeaponProp" then obj:Destroy() end
+	end
+	if not weaponId then return end
+	local builder = WEAPON_BUILDERS[weaponId]
+	if not builder then return end
+	local handR15 = char:FindFirstChild("RightHand") :: BasePart?
+	local armR6   = char:FindFirstChild("Right Arm") :: BasePart?
+	local hand = handR15 or armR6
+	if not hand then return end
+	builder(hand :: BasePart, char, armR6 ~= nil)
+end
+
 function CombatClient.playDeathAnimation()
 	local char = localPlayer.Character
 	if not char then return end
