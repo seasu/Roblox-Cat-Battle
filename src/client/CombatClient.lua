@@ -411,6 +411,9 @@ local ATTACK_CD = 0.35
 
 -- VFX 最近一次播放時間
 local lastVfxTime = 0
+-- 命中確認音效節流（避免 AoE 多目標瞬間重疊爆音）
+local lastConfirmedAttackSoundTime = 0
+local CONFIRMED_ATTACK_SOUND_CD = 0.08
 
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	local now = os.clock()
@@ -435,8 +438,6 @@ function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 		spawnAttackVFX("BasicSwipe", vfxPos)
 	end
 
-	-- 揮爪音效（固定物件直接播放，不建立新實例）
-	playSound(SFX.attack, vfxPos)
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -480,7 +481,12 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playSound(SFX.hit, position)
+	local now = os.clock()
+	if now - lastConfirmedAttackSoundTime >= CONFIRMED_ATTACK_SOUND_CD then
+		lastConfirmedAttackSoundTime = now
+		-- 只在伺服器確認命中時播放攻擊音效，避免空點畫面一直出聲
+		playSound(SFX.attack, position)
+	end
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,

@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.2.6`
+> **Current Version:** `v0.2.7`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,12 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.2.7）
+- **攻擊音效觸發修正**：`CombatClient.lua` 移除 `attemptBasicAttack` 的點擊即時播音，改為在 `CombatHit`（命中回饋）顯示傷害數字時才播放 `SFX.attack`，避免空點畫面反覆出聲。
+- **爆音保護**：新增命中音效節流（0.08s），降低 AoE 同幀多目標命中時的重疊爆音。
+- **修改檔案**：`src/client/CombatClient.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：基礎攻擊 / 點擊 NPC（音效觸發）✅
 
 ### 2026-05-04（v0.2.6）
 - **預設白貓外觀修正**：移除 `CatManager.lua` 舊版 `applyBasicCatVisual`（人形上色＋耳尾）流程，改為統一呼叫 `CatAppearance.apply`，避免角色被覆蓋回類人外觀，確保主角預設為完整白貓造型。
