@@ -342,10 +342,17 @@ local KEY_BINDINGS: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.T] = 6,
 }
 
-local function getMouseTarget(): (string?, Vector3?)
+local function getMouseTarget(overridePos: Vector3?): (string?, Vector3?)
 	local camera = workspace.CurrentCamera
-	local mouse = localPlayer:GetMouse()
-	local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
+	local x, y
+	if overridePos then
+		x, y = overridePos.X, overridePos.Y
+	else
+		local mouse = localPlayer:GetMouse()
+		x, y = mouse.X, mouse.Y
+	end
+	
+	local unitRay = camera:ScreenPointToRay(x, y)
 	local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 100)
 	if not result then return nil, nil end
 
@@ -360,13 +367,13 @@ local function getMouseTarget(): (string?, Vector3?)
 	return nil, result.Position
 end
 
-function CombatClient.attemptBasicAttack()
+function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	local char = localPlayer.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
-	local instanceId, hitPos = getMouseTarget()
+	local instanceId, hitPos = getMouseTarget(inputPos)
 	
 	-- 無論是否打中 NPC，都播放揮手動作與聲音，提供操作回饋
 	local vfxPos = hitPos or (root.Position + root.CFrame.LookVector * 3)
@@ -380,11 +387,11 @@ function CombatClient.attemptBasicAttack()
 	triggerSwingForSkill("BasicSwipe")
 end
 
-function CombatClient.activateSkill(slotIndex: number)
+function CombatClient.activateSkill(slotIndex: number, inputPos: Vector3?)
 	local skillId = CombatClient.skillSlots[slotIndex]
 	if not skillId then return end
 
-	local instanceId, hitPos = getMouseTarget()
+	local instanceId, hitPos = getMouseTarget(inputPos)
 	useSkillEvent:FireServer(skillId, instanceId)
 
 	-- 立即顯示技能特效 + 揮手動畫
@@ -819,20 +826,6 @@ function CombatClient.init()
 		if slotIndex then
 			CombatClient.activateSkill(slotIndex)
 		end
-	end)
-end
-
-return CombatClient
-NDINGS[input.KeyCode]
-		if slotIndex then
-			CombatClient.activateSkill(slotIndex)
-		end
-	end)
-
-	-- 手機觸控
-	UserInputService.TouchTap:Connect(function(touchPositions: { Vector2 }, gameProcessed: boolean)
-		if gameProcessed then return end
-		CombatClient.attemptBasicAttack()
 	end)
 end
 
