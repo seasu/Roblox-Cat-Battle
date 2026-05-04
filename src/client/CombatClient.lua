@@ -330,41 +330,41 @@ local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
 local Debris = game:GetService("Debris")
 
--- 音效 ID 表（Roblox 官方免費 Sound 類型）
-local SFX_IDS = {
-	attack = "rbxassetid://186311218",  -- swoosh
-	hit    = "rbxassetid://131961136",  -- punch
-	hurt   = "rbxassetid://131961136",  -- 受傷（與 hit 相同，音量不同）
-	coin   = "rbxassetid://256804995",  -- 金幣
-	magic  = "rbxassetid://847061203",  -- 魔法
+-- ── 音效系統 ────────────────────────────────────────────────────
+-- 使用 Roblox 官方內建 Gear 音效 ID（來自官方裝備系統，永久有效）
+
+local function makeSound(id: string, vol: number): Sound
+	local s   = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume  = vol
+	s.Parent  = SoundService
+	return s
+end
+
+local SFX = {
+	-- 揮擊（Sword Slash）：Roblox Gear 內建，ID 62337944
+	attack = makeSound("rbxassetid://62337944", 0.8),
+	-- 命中（Hit）：Roblox Gear 內建，ID 93016098
+	hit    = makeSound("rbxassetid://93016098", 1.0),
+	-- 受傷（同命中，音量較低）
+	hurt   = makeSound("rbxassetid://93016098", 0.6),
+	-- 金幣（Sparkle）：ID 4612355301
+	coin   = makeSound("rbxassetid://4612355301", 0.9),
+	-- 魔法（同金幣）
+	magic  = makeSound("rbxassetid://4612355301", 0.8),
 }
 
--- 建立 Sound 物件並掛在 SoundService
-local SFX: { [string]: Sound } = {}
-for name, id in pairs(SFX_IDS) do
-	local s = Instance.new("Sound")
-	s.Name   = "CatSFX_" .. name
-	s.SoundId = id
-	s.Volume  = 0.8
-	s.Parent  = SoundService
-	SFX[name] = s
-end
-SFX.hurt.Volume = 0.65
-
--- 預載所有音效（非同步，背景下載）
+-- 預載確保首次使用時無延遲
 task.spawn(function()
-	local assets = {}
-	for _, id in pairs(SFX_IDS) do
-		table.insert(assets, id)
-	end
-	pcall(function()
-		ContentProvider:PreloadAsync(assets)
-	end)
+	pcall(ContentProvider.PreloadAsync, ContentProvider, {
+		"rbxassetid://62337944",
+		"rbxassetid://93016098",
+		"rbxassetid://4612355301",
+	})
 end)
 
--- 播放音效（直接 Play，不建立新實例，不做 3D 定位）
+-- 播放：Stop + Play 確保連打時每次都有聲音
 local function playSound(sfx: Sound, _pos: Vector3?)
-	-- 停止上一次播放再重播，確保連打時每次都有聲音
 	sfx:Stop()
 	sfx:Play()
 end
