@@ -108,7 +108,23 @@ RemoteFunction：`GetPlayerData` / `GetShopCatalog`
 
 ---
 
-## 八、3D 商店攤位架構
+## 八、NPC AI 設計
+
+NPC 採三狀態機（`NPCManager.lua` 的 `npcState` 表）：
+
+| 狀態 | 觸發條件 | 行為 |
+|---|---|---|
+| `idle` | 初始 / 返回原位後 | 漫步（home ±18 格），速度 × 0.5 |
+| `chase` | 感知範圍（28 格）內有玩家且不在安全區 | 全速追逐 |
+| `return` | 玩家進安全區 / 玩家跑超出 50 格 / 離 home > 65 格 | 速度 × 1.5 快速返回 home |
+
+安全區（`SAFE_ZONES`，NPCManager.lua 頂部定義，需與 WorldSetup 的視覺保持一致）：
+- 出生點圓形：center=(0,0,0)，radius=30
+- 商城矩形：X=−35~35，Z=25~65
+
+玩偶（doll）不移動，只在攻擊距離（5 格）內且玩家不在安全區時攻擊。
+
+## 九、3D 商店攤位架構
 
 出生點南方（Z = +40）三棟攤位，由 `WorldSetup.server.lua` 建立：
 

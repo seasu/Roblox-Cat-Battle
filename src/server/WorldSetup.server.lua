@@ -72,16 +72,61 @@ spawnLocation.Transparency = 0.2
 spawnLocation.Duration = 0
 spawnLocation.Parent = workspace
 
--- ── 安全廣場（生成點周圍，小範圍） ──────────────────────────────
-makePart({
-	name = "SafeZone",
-	size = Vector3.new(40, 0.5, 40),
-	cframe = CFrame.new(0, 0.2, 0),
+-- ── 安全區（出生點廣場 + 商城區） ──────────────────────────────────
+-- 對應 NPCManager 的 SAFE_ZONES 定義，視覺上要吻合
+
+-- 出生點安全圓（直徑 60，對應半徑 30）
+local safeCircle = makePart({
+	name = "SafeZone_Spawn",
+	size = Vector3.new(60, 0.5, 60),
+	cframe = CFrame.new(0, 0.18, 0),
 	color = BrickColor.new("Bright blue"),
-	material = Enum.Material.SmoothPlastic,
-	transparency = 0.8,
+	material = Enum.Material.Neon,
+	transparency = 0.88,
 	parent = workspace,
 })
+-- 圓形視覺（改為球狀扁平圓柱近似）
+safeCircle.Shape = Enum.PartType.Cylinder
+
+-- 商城安全矩形（對應 X=-35~35, Z=25~65，寬 70 深 40）
+makePart({
+	name = "SafeZone_Shop",
+	size = Vector3.new(70, 0.5, 40),
+	cframe = CFrame.new(0, 0.18, 45),
+	color = BrickColor.new("Bright blue"),
+	material = Enum.Material.Neon,
+	transparency = 0.88,
+	parent = workspace,
+})
+
+-- 安全區告示牌（出生點正上方）
+local spawnSignPart = makePart({
+	name = "SafeSign",
+	size = Vector3.new(12, 0.1, 6),
+	cframe = CFrame.new(0, 8, 0),
+	color = BrickColor.new("Bright blue"),
+	material = Enum.Material.Neon,
+	transparency = 0.5,
+	parent = workspace,
+})
+do
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 200, 0, 60)
+	bb.StudsOffset = Vector3.new(0, 5, 0)
+	bb.AlwaysOnTop = false
+	bb.Parent = spawnSignPart
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 0.25
+	lbl.BackgroundColor3 = Color3.fromRGB(0, 40, 100)
+	lbl.Text = "🛡 安全區域 — 怪物無法進入"
+	lbl.TextColor3 = Color3.fromRGB(120, 200, 255)
+	lbl.TextStrokeTransparency = 0.3
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 16
+	lbl.Parent = bb
+end
 
 -- ── 三大戰鬥區域（圍繞生成點，左→右 = 最低階→最高階） ────────────
 --   玩偶區（最簡單）：生成點左方 X = -150
