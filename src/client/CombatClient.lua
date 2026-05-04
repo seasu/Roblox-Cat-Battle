@@ -372,6 +372,7 @@ function CombatClient.attemptBasicAttack()
 		local vfxPos = hitPos or (root.Position + Vector3.new(0, 0, -3))
 		spawnAttackVFX("BasicSwipe", vfxPos)
 		playOneShotSound("rbxassetid://12222225", vfxPos, 0.6)
+		triggerSwingForSkill("BasicSwipe")
 	end
 end
 
@@ -382,11 +383,12 @@ function CombatClient.activateSkill(slotIndex: number)
 	local instanceId, hitPos = getMouseTarget()
 	useSkillEvent:FireServer(skillId, instanceId)
 
-	-- 立即顯示技能特效（不等伺服器回應，讓手感更即時）
+	-- 立即顯示技能特效 + 揮手動畫
 	local char = localPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local vfxPos = hitPos or (root and root.Position + Vector3.new(0, 0, -4)) or Vector3.new(0, 1, 0)
 	spawnAttackVFX(skillId, vfxPos)
+	triggerSwingForSkill(skillId)
 end
 
 function CombatClient.showDamageNumber(position: Vector3, damage: number | string, isCrit: boolean)
@@ -451,6 +453,132 @@ function CombatClient.onNPCDied(instanceId: string)
 			end
 			break
 		end
+	end
+end
+
+-- ── 攻擊揮手動畫 ─────────────────────────────────────────────────
+-- 找出手臂的 Motor6D（R6 在 Torso，R15 在 UpperTorso / RightUpperArm）
+local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
+	-- R6：Motor6D 名稱 = "Right Arm" / "Left Arm"，位於 Torso 內
+	local torso = char:FindFirstChild("Torso")
+	if torso then
+		local m = torso:FindFirstChild(side .. " Arm") :: Motor6D?
+		if m and m:IsA("Motor6D") then return m end
+	end
+	-- R15：Motor6D 名稱 = "RightShoulder" / "LeftShoulder"，位於 UpperTorso 內
+	local upperTorso = char:FindFirstChild("UpperTorso")
+	if upperTorso then
+		local name = side == "Right" and "RightShoulder" or "LeftShoulder"
+		local m = upperTorso:FindFirstChild(name) :: Motor6D?
+		if m and m:IsA("Motor6D") then return m end
+	end
+	return nil
+end
+
+-- 揮手動畫：motor 向前轉 angle 弧度，再彈回
+-- swingAngle < 0 = 向前揮（往 -Z 方向轉）
+local swingActive = false
+local function playSwingAnimation(swingAngle: number, duration: number)
+	if swingActive then return end
+	local char = localPlayer.Character
+	if not char then return end
+	local motor = getArmMotor(char, "Right")
+	if not motor then return end
+
+	swingActive = true
+	local original = motor.Transform
+
+	-- 向前揮出
+	local target = CFrame.Angles(swingAngle, 0, 0)
+	local steps = math.ceil(duration / (1/60))
+	local perStep = 1 / steps
+
+	-- 用 task.spawn 做逐幀插值（Motor6D.Transform 不支援 TweenService）
+	task.spawn(function()
+		-- 揮出階段（前 40%）
+		local outSteps = math.ceil(steps * 0.4)
+		for i = 1, outSteps do
+			if not char.Parent then break end
+			local t = i * (1 / outSteps)
+			motor.Transform = original:Lerp(target, t)
+			task.wait(1/60)
+		end
+		motor.Transform = target
+
+		-- 彈回階段（後 60%）
+		local backSteps = steps - outSteps
+		for i = 1, backSteps do
+			if not char.Parent then break end
+			local t = i * (1 / backSteps)
+			-- Bounce 效果：超過終點再回來
+			local bounce = math.sin(t * math.pi)
+			local extra = CFrame.Angles(swingAngle * 0.15 * bounce, 0, 0)
+			motor.Transform = target:Lerp(original, t) * extra
+			task.wait(1/60)
+		end
+		motor.Transform = original
+		swingActive = false
+	end)
+end
+
+-- 依技能決定揮動參數
+local SKILL_SWING: { [string]: { angle: number, duration: number } } = {
+	BasicSwipe      = { angle = -1.4, duration = 0.28 },
+	PowerClaw       = { angle = -1.7, duration = 0.35 },
+	ShadowStrike    = { angle = -1.9, duration = 0.25 },
+	FireClaw        = { angle = -1.5, duration = 0.32 },
+	GentlemanStrike = { angle = -2.0, duration = 0.30 },
+	FoodRage        = { angle = -1.8, duration = 0.30 },
+	PetalSlash      = { angle = -1.4, duration = 0.28 },
+	ThunderPounce   = { angle = -1.9, duration = 0.30 },
+}
+
+-- 雙手揮動（AoE 技能用）
+local function playBothArmsSwing(angle: number, duration: number)
+	local char = localPlayer.Character
+	if not char then return end
+	local mR = getArmMotor(char, "Right")
+	local mL = getArmMotor(char, "Left")
+
+	local function swingMotor(motor: Motor6D)
+		local orig = motor.Transform
+		local tgt  = CFrame.Angles(angle, 0, 0)
+		local steps = math.ceil(duration / (1/60))
+		task.spawn(function()
+			local outS = math.ceil(steps * 0.4)
+			for i = 1, outS do
+				if not char.Parent then break end
+				motor.Transform = orig:Lerp(tgt, i / outS)
+				task.wait(1/60)
+			end
+			motor.Transform = tgt
+			local backS = steps - outS
+			for i = 1, backS do
+				if not char.Parent then break end
+				motor.Transform = tgt:Lerp(orig, i / backS)
+				task.wait(1/60)
+			end
+			motor.Transform = orig
+		end)
+	end
+
+	if mR then swingMotor(mR) end
+	if mL then swingMotor(mL) end
+end
+
+local AOE_SKILLS = {
+	EmberAura = true, FrostAura = true, ChainLightning = true,
+	PetalSlash = true, ThunderPounce = true,
+}
+
+local function triggerSwingForSkill(skillId: string)
+	local params = SKILL_SWING[skillId]
+	if AOE_SKILLS[skillId] then
+		playBothArmsSwing(params and params.angle or -1.5, params and params.duration or 0.32)
+	elseif params then
+		playSwingAnimation(params.angle, params.duration)
+	else
+		playSwingAnimation(-1.4, 0.28)
 	end
 end
 
