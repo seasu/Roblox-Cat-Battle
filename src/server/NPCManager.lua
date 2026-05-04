@@ -20,6 +20,42 @@ local idCounter = 0
 local npcHomePositions = {}
 local npcNextAttackAt = {}
 local npcWanderTargets = {}
+-- "idle"（漫步）/ "chase"（追逐）/ "return"（返回原位）
+local npcState = {}
+
+-- ── 安全區定義 ─────────────────────────────────────────────────────
+-- 圓形：{type="circle", center=Vector3, radius=number}
+-- 矩形：{type="rect", minX, maxX, minZ, maxZ}
+local SAFE_ZONES = {
+	-- 出生點廣場（SafeZone Part + 周圍緩衝，半徑 30）
+	{ type = "circle", center = Vector3.new(0, 0, 0), radius = 30 },
+	-- 商城攤位區（出生點南方 Z=30~60，X=-35~35）
+	{ type = "rect", minX = -35, maxX = 35, minZ = 25, maxZ = 65 },
+}
+
+-- 追逐參數
+local AGGRO_RANGE     = 28   -- NPC 發現玩家的距離（格）
+local MAX_CHASE_DIST  = 65   -- 離 home 最大追逐距離，超過即放棄
+local ATTACK_RANGE    = 5    -- 攻擊距離
+local RETURN_SPEED_MULT = 1.5 -- 返回原位時的速度倍率
+
+local function isInSafeZone(position: Vector3): boolean
+	for _, zone in ipairs(SAFE_ZONES) do
+		if zone.type == "circle" then
+			local dx = position.X - zone.center.X
+			local dz = position.Z - zone.center.Z
+			if math.sqrt(dx*dx + dz*dz) <= zone.radius then
+				return true
+			end
+		elseif zone.type == "rect" then
+			if position.X >= zone.minX and position.X <= zone.maxX
+				and position.Z >= zone.minZ and position.Z <= zone.maxZ then
+				return true
+			end
+		end
+	end
+	return false
+end
 
 -- 各 NPC 的視覺設定（難度 → 縮放比例 + 主色 + 配色）
 local NPC_CONFIG = {
@@ -412,6 +448,7 @@ function NPCManager.spawnNPC(npcId, position)
 	npcModels[instanceId] = result
 	npcHomePositions[instanceId] = pivotPos
 	npcNextAttackAt[instanceId] = 0
+	npcState[instanceId] = "idle"
 
 	print("[NPCManager] 生成 NPC：", def.displayName, "at", spawnPos)
 	return activeNPCs[instanceId]
@@ -460,6 +497,7 @@ function NPCManager.handleDeath(instanceId, killer)
 	npcHomePositions[instanceId] = nil
 	npcWanderTargets[instanceId] = nil
 	npcNextAttackAt[instanceId] = nil
+	npcState[instanceId] = nil
 
 	local model = npcModels[instanceId]
 	if model then
@@ -555,24 +593,83 @@ local function getNearestPlayer(position, maxDistance)
 	return nearest, nearestDist
 end
 
--- 每幀更新 NPC 移動 / 攻擊行為（玩偶靜止，野貓/野人主動追人）
+-- ── NPC 三狀態 AI ─────────────────────────────────────────────────
+--
+--  idle   → 在 home 附近隨機漫步，感知到玩家後切換 chase
+--  chase  → 追逐最近玩家；以下情況放棄並切 return：
+--             1. 玩家進入安全區
+--             2. 玩家跑得太遠（> AGGRO_RANGE × 1.8）
+--             3. NPC 離 home 超過 MAX_CHASE_DIST
+--  return → 快速回到 home；到達後切 idle
+--
 local function updateNPCBehavior(deltaTime)
 	for id, npc in pairs(activeNPCs) do
 		local model = npcModels[id]
 		if not model then continue end
 
 		local cfg = NPC_CONFIG[npc.definition.id]
-		local speed = cfg and MOVE_SPEED_BY_KIND[cfg.kind] or 0
+		local baseSpeed = cfg and MOVE_SPEED_BY_KIND[cfg.kind] or 0
 		local home = npcHomePositions[id] or npc.position
-		local targetPos = home
+		local state = npcState[id] or "idle"
 
-		local player, dist = getNearestPlayer(npc.position, 45)
+		-- 玩偶靜止，只做攻擊判定（不移動也不追）
+		if baseSpeed == 0 then
+			local player, dist = getNearestPlayer(npc.position, ATTACK_RANGE)
+			if player and dist <= ATTACK_RANGE then
+				local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if hrp and not isInSafeZone(hrp.Position) then
+					local now = os.clock()
+					if now >= (npcNextAttackAt[id] or 0) then
+						npcNextAttackAt[id] = now + 1.5
+						local hum = player.Character:FindFirstChildOfClass("Humanoid")
+						if hum then hum:TakeDamage(npc.definition.attack) end
+					end
+				end
+			end
+			continue
+		end
 
-		if player and dist <= 45 then
-			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
+		local targetPos: Vector3
+		local moveSpeed = baseSpeed
+
+		if state == "return" then
+			-- 返回原位
+			local distHome = (home - npc.position).Magnitude
+			if distHome < 2 then
+				npc.position = Vector3.new(home.X, npc.position.Y, home.Z)
+				npcState[id] = "idle"
+				npcWanderTargets[id] = nil
+				targetPos = home
+			else
+				targetPos = home
+				moveSpeed = baseSpeed * RETURN_SPEED_MULT
+			end
+
+		elseif state == "chase" then
+			local player, dist = getNearestPlayer(npc.position, AGGRO_RANGE * 1.8)
+			local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+			-- 判斷是否應放棄追逐
+			local shouldAbandon = false
+			if not player or not hrp then
+				shouldAbandon = true
+			else
+				local playerInSafe = isInSafeZone(hrp.Position)
+				local npcTooFarFromHome = (npc.position - home).Magnitude > MAX_CHASE_DIST
+				if playerInSafe or npcTooFarFromHome then
+					shouldAbandon = true
+				end
+			end
+
+			if shouldAbandon then
+				npcState[id] = "return"
+				targetPos = home
+				moveSpeed = baseSpeed * RETURN_SPEED_MULT
+			else
+				-- 繼續追逐
 				targetPos = hrp.Position
-				if dist <= 5 then
+				-- 攻擊判定
+				if dist and dist <= ATTACK_RANGE then
 					local now = os.clock()
 					if now >= (npcNextAttackAt[id] or 0) then
 						npcNextAttackAt[id] = now + 1.2
@@ -581,19 +678,39 @@ local function updateNPCBehavior(deltaTime)
 					end
 				end
 			end
-		elseif speed > 0 then
-			local wander = npcWanderTargets[id]
-			if not wander or (wander - npc.position).Magnitude < 3 then
-				wander = home + Vector3.new(math.random(-18, 18), 0, math.random(-18, 18))
-				npcWanderTargets[id] = wander
+
+		else
+			-- idle：漫步
+			local player, dist = getNearestPlayer(npc.position, AGGRO_RANGE)
+			local hrp = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+			if player and hrp and dist and dist <= AGGRO_RANGE
+				and not isInSafeZone(hrp.Position) then
+				-- 玩家在感知範圍內且不在安全區 → 切換追逐
+				npcState[id] = "chase"
+				targetPos = hrp.Position
+			else
+				-- 繼續漫步
+				local wander = npcWanderTargets[id]
+				if not wander or (wander - npc.position).Magnitude < 2.5 then
+					-- 隨機新漫步點（在 home 附近 18 格內）
+					wander = home + Vector3.new(math.random(-18, 18), 0, math.random(-18, 18))
+					npcWanderTargets[id] = wander
+				end
+				targetPos = wander
+				moveSpeed = baseSpeed * 0.5  -- 漫步時速度減半，看起來更自然
 			end
-			targetPos = wander
 		end
 
-		if speed > 0 then
-			local toTarget = Vector3.new(targetPos.X - npc.position.X, 0, targetPos.Z - npc.position.Z)
+		-- 移動
+		if targetPos then
+			local toTarget = Vector3.new(
+				targetPos.X - npc.position.X,
+				0,
+				targetPos.Z - npc.position.Z
+			)
 			if toTarget.Magnitude > 0.1 then
-				local step = math.min(toTarget.Magnitude, speed * deltaTime)
+				local step = math.min(toTarget.Magnitude, moveSpeed * deltaTime)
 				local dir = toTarget.Unit
 				npc.position = npc.position + dir * step
 				model:PivotTo(CFrame.lookAt(npc.position, npc.position + dir))

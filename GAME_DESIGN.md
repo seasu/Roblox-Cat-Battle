@@ -9,7 +9,7 @@
 | 系統 | 後端 | 前端 UI | 備註 |
 |---|---|---|---|
 | 玩家資料 / DataStore | ✅ | — | DataStore.lua，指數退避重試 |
-| 貓咪選擇 | ✅ | ⚠️ | 後端完整；UI 只有 toast，無選擇面板 |
+| 貓咪選擇 | ✅ | ✅ | 商城貓咪 tab 已加入「切換使用」按鈕 |
 | 貓咪外觀（全身替換） | ✅ | — | CatAppearance.lua，R6/R15 均支援 |
 | 等級 / 經驗值 | ✅ | ✅ | XP bar + 升級 toast |
 | 技能系統 | ✅ | ✅ | 技能列 Q/E/R/F，冷卻 overlay |
@@ -19,8 +19,9 @@
 | 商城（金幣買裝備） | ✅ | ✅ | 商城裝備 tab，BuyEquipment 事件 |
 | 寵物合成系統 | ✅ | ✅ | 碎片 drop + 合成後端 + 合成 tab |
 | NPC 生成 / AI | ✅ | — | 三種 NPC 類型，追逐 + 漫步 |
-| PvP 系統 | ✅ | ⚠️ | 後端完整；UI 只有 toast |
+| PvP 系統 | ✅ | ✅ | 新增 PvP 面板（列出線上玩家，可點擊發起挑戰） |
 | 地圖 / 場景 | ✅ | — | WorldSetup，3 區圍繞出生點 |
+| 3D 商店攤位 | ✅ | ✅ | 出生點南方 3 棟建築，ProximityPrompt 觸發商城各 tab |
 | HP 顯示 / 自動回復 | ✅ | — | AlwaysOn + 每秒 +1 HP |
 
 ---
@@ -32,6 +33,16 @@
 - **野貓區**（中等）：Z = -150，size 120×120
 - **野人區**（最難）：X = +150，size 120×120
 - 地圖邊界：620×620
+
+### 安全區（怪物不追、不攻擊）
+
+| 區域 | 形狀 | 範圍 |
+|---|---|---|
+| 出生點廣場 | 圓形 | 中心 (0,0,0)，半徑 30 格 |
+| 商城攤位區 | 矩形 | X=-35~35，Z=25~65 |
+
+- Neon 藍色半透明地板視覺化
+- NPC 進入追逐後，玩家只要跑進安全區，NPC 立即放棄並返回原位
 
 ---
 
@@ -131,7 +142,41 @@
 
 ## 變更日誌
 
-### 2026-05-04
+### 2026-05-04（第五批）
+- **攻擊視覺特效**：`CombatClient.lua` 新增完整 VFX 系統
+  - 武器特效：鐵爪（銀色爪痕）、迷你劍（藍白劍氣）、貓盾（金色衝擊環）、魔法杖（紫色星爆）、無武器（白色爪痕）
+  - 技能特效：全部 16 種技能各有獨立特效（爆炸球、環形波、爪痕、閃電條、上升粒子等）
+  - 技能特效疊加在武器特效之上；攻擊指令發出即立即播放（不等伺服器）
+- **武器同步**：`EquipmentChanged` 事件同步 weapon id 到 `CombatClient.currentWeapon`
+- **區域高空標示**：`WorldSetup.server.lua` 改為高空錨點（Y=90）+ AlwaysOnTop BillboardGui，附副標題等級範圍
+- **光柱**：各戰鬥區域中央新增 120 格高 Neon 細光柱，遠距可見
+- **修改檔案**：`src/client/CombatClient.lua`、`src/client/GameClient.client.lua`、`src/server/WorldSetup.server.lua`
+
+### 2026-05-04（第四批）
+- **NPC 三狀態 AI**：idle（漫步）→ chase（追逐）→ return（放棄返回），取代原本的無限追逐
+- **感知範圍縮小**：45 格 → 28 格；漫步速度減半（更自然）
+- **追逐放棄條件**：玩家進安全區、玩家跑超過 AGGRO_RANGE×1.8、NPC 離 home > 65 格，三者任一觸發
+- **安全區系統**：出生點半徑 30 圓 + 商城矩形 Z=25~65，NPC 感知到玩家在安全區內不啟動追逐
+- **玩偶靜止 AI**：只做近身攻擊判定，不移動，且安全區內不攻擊
+- **地圖視覺**：Neon 藍色半透明安全區地板 + 告示牌「🛡 安全區域」
+- **修改檔案**：`src/server/NPCManager.lua`、`src/server/WorldSetup.server.lua`
+
+### 2026-05-04（第三批）
+- **3D 商店攤位**：`WorldSetup.server.lua` 新增三棟建築（商城/裝備/合成），各帶 BillboardGui 大圖示與 ProximityPrompt
+- **ProximityPrompt 接入**：`GameClient.client.lua` 的 `bindShopPrompts()` 掃描 workspace，連接到對應 tab
+- **商城 startTab 參數**：`openShopPanel(startTab)` 支援 `"cats"/"equip"/"synth"`，底部 ⚔ 裝備按鈕改為直接開裝備 tab
+- **卡片視覺升級**：`buildCard` 加入左側識別色條、色塊首字圖示；裝備 tab 固定排序（項圈→帽子→武器）、詳細加成字串
+- **合成進度條**：合成 tab 每張卡片底部顯示碎片進度條（紫色填滿 = 可合成）
+- **Tab 高亮**：當前 tab 背景深藍，切換時更新
+- **修改檔案**：`src/server/WorldSetup.server.lua`、`src/client/UIManager.lua`、`src/client/GameClient.client.lua`、`.cursor/rules/dev-guide.mdc`
+
+### 2026-05-04（第二批）
+- **貓咪選擇 UI**：`showCatsTab` 已擁有的貓咪新增「切換使用」按鈕，呼叫 `SelectCat:FireServer(catId)`；目前使用中顯示「使用中」標示
+- **PvP 發起 UI**：新增 `openPvPPanel` 函式，列出當前線上玩家，點擊「發起挑戰」呼叫 `RequestPvP:FireServer(userId)`；底部新增「⚔ PvP」按鈕
+- **Cursor 規則**：新增 `.cursor/rules/dev-guide.mdc`，整合 CLAUDE.md / PRD.md / GAME_DESIGN.md 的快速導引，AI 可自動參照
+- **修改檔案**：`src/client/UIManager.lua`、`GAME_DESIGN.md`、`.cursor/rules/dev-guide.mdc`
+
+### 2026-05-04（第一批）
 - **商城 UI**：新增 🛒 商城按鈕，三個 Tab（貓咪/裝備/合成）
 - **裝備 UI**：新增 ⚔ 裝備按鈕，顯示三槽位裝備狀態
 - **BuyEquipment**：合併購買+裝備為單一事件，新增後端處理

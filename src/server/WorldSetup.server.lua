@@ -72,16 +72,61 @@ spawnLocation.Transparency = 0.2
 spawnLocation.Duration = 0
 spawnLocation.Parent = workspace
 
--- ── 安全廣場（生成點周圍，小範圍） ──────────────────────────────
-makePart({
-	name = "SafeZone",
-	size = Vector3.new(40, 0.5, 40),
-	cframe = CFrame.new(0, 0.2, 0),
+-- ── 安全區（出生點廣場 + 商城區） ──────────────────────────────────
+-- 對應 NPCManager 的 SAFE_ZONES 定義，視覺上要吻合
+
+-- 出生點安全圓（直徑 60，對應半徑 30）
+local safeCircle = makePart({
+	name = "SafeZone_Spawn",
+	size = Vector3.new(60, 0.5, 60),
+	cframe = CFrame.new(0, 0.18, 0),
 	color = BrickColor.new("Bright blue"),
-	material = Enum.Material.SmoothPlastic,
-	transparency = 0.8,
+	material = Enum.Material.Neon,
+	transparency = 0.88,
 	parent = workspace,
 })
+-- 圓形視覺（改為球狀扁平圓柱近似）
+safeCircle.Shape = Enum.PartType.Cylinder
+
+-- 商城安全矩形（對應 X=-35~35, Z=25~65，寬 70 深 40）
+makePart({
+	name = "SafeZone_Shop",
+	size = Vector3.new(70, 0.5, 40),
+	cframe = CFrame.new(0, 0.18, 45),
+	color = BrickColor.new("Bright blue"),
+	material = Enum.Material.Neon,
+	transparency = 0.88,
+	parent = workspace,
+})
+
+-- 安全區告示牌（出生點正上方）
+local spawnSignPart = makePart({
+	name = "SafeSign",
+	size = Vector3.new(12, 0.1, 6),
+	cframe = CFrame.new(0, 8, 0),
+	color = BrickColor.new("Bright blue"),
+	material = Enum.Material.Neon,
+	transparency = 0.5,
+	parent = workspace,
+})
+do
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 200, 0, 60)
+	bb.StudsOffset = Vector3.new(0, 5, 0)
+	bb.AlwaysOnTop = false
+	bb.Parent = spawnSignPart
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 0.25
+	lbl.BackgroundColor3 = Color3.fromRGB(0, 40, 100)
+	lbl.Text = "🛡 安全區域 — 怪物無法進入"
+	lbl.TextColor3 = Color3.fromRGB(120, 200, 255)
+	lbl.TextStrokeTransparency = 0.3
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 16
+	lbl.Parent = bb
+end
 
 -- ── 三大戰鬥區域（圍繞生成點，左→右 = 最低階→最高階） ────────────
 --   玩偶區（最簡單）：生成點左方 X = -150
@@ -90,36 +135,41 @@ makePart({
 
 local zones: { {
 	name: string,
+	subLabel: string,
 	center: Vector3,
 	size: Vector3,
 	color: BrickColor,
 	labelColor: Color3,
 } } = {
 	{
-		name = "【玩偶區】",
+		name = "🎪 玩偶區",
+		subLabel = "初學者區域 · Lv.1~20",
 		center = Vector3.new(-150, 0.3, 0),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright yellow"),
 		labelColor = Color3.fromRGB(255, 230, 50),
 	},
 	{
-		name = "【野貓區】",
+		name = "🐱 野貓區",
+		subLabel = "進階區域 · Lv.20~50",
 		center = Vector3.new(0, 0.3, -150),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright orange"),
-		labelColor = Color3.fromRGB(255, 140, 30),
+		labelColor = Color3.fromRGB(255, 160, 40),
 	},
 	{
-		name = "【野人區】",
+		name = "💀 野人區",
+		subLabel = "高難度區域 · Lv.50+",
 		center = Vector3.new(150, 0.3, 0),
 		size = Vector3.new(120, 0.6, 120),
 		color = BrickColor.new("Bright red"),
-		labelColor = Color3.fromRGB(255, 80, 80),
+		labelColor = Color3.fromRGB(255, 90, 90),
 	},
 }
 
 for _, zone in ipairs(zones) do
-	local tile = makePart({
+	-- 地面色塊（保留，標示戰鬥範圍）
+	makePart({
 		name = zone.name,
 		size = zone.size,
 		cframe = CFrame.new(zone.center),
@@ -129,22 +179,69 @@ for _, zone in ipairs(zones) do
 		parent = workspace,
 	})
 
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.new(0, 240, 0, 70)
-	billboard.StudsOffset = Vector3.new(0, 10, 0)
-	billboard.AlwaysOnTop = false
-	billboard.Parent = tile
+	-- 高空光柱（細長半透明柱，從地面延伸到天空）
+	local pillarHeight = 120
+	makePart({
+		name = zone.name .. "_Pillar",
+		size = Vector3.new(4, pillarHeight, 4),
+		cframe = CFrame.new(zone.center + Vector3.new(0, pillarHeight / 2, 0)),
+		color = zone.color,
+		material = Enum.Material.Neon,
+		transparency = 0.82,
+		parent = workspace,
+	})
 
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 0.3
-	label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	label.Text = zone.name
-	label.TextColor3 = zone.labelColor
-	label.TextStrokeTransparency = 0
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 28
-	label.Parent = billboard
+	-- 高空錨點 Part（不可見，BillboardGui 的掛載點）
+	local signAnchor = makePart({
+		name = zone.name .. "_SignAnchor",
+		size = Vector3.new(0.1, 0.1, 0.1),
+		cframe = CFrame.new(zone.center + Vector3.new(0, 90, 0)),
+		color = BrickColor.new("Really black"),
+		transparency = 1,
+		parent = workspace,
+	})
+
+	-- 大型區域標示牌（高空，面向四方 AlwaysOnTop）
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 380, 0, 110)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 500  -- 遠距也看得到
+	billboard.Parent = signAnchor
+
+	-- 背景
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bg.BackgroundTransparency = 0.35
+	bg.BorderSizePixel = 0
+	bg.Parent = billboard
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 12)
+	bgCorner.Parent = bg
+
+	-- 名稱文字
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, 0, 0.55, 0)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = zone.name
+	nameLbl.TextColor3 = zone.labelColor
+	nameLbl.TextStrokeTransparency = 0.1
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextScaled = true
+	nameLbl.Parent = billboard
+
+	-- 副標題（等級範圍提示）
+	local subLbl = Instance.new("TextLabel")
+	subLbl.Size = UDim2.new(1, 0, 0.38, 0)
+	subLbl.Position = UDim2.new(0, 0, 0.58, 0)
+	subLbl.BackgroundTransparency = 1
+	subLbl.Text = zone.subLabel or ""
+	subLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+	subLbl.TextStrokeTransparency = 0.4
+	subLbl.Font = Enum.Font.Gotham
+	subLbl.TextScaled = true
+	subLbl.Parent = billboard
 end
 
 -- ── 短路徑（生成點 → 各區域） ────────────────────────────────────
@@ -215,6 +312,145 @@ for i, w in ipairs(wallDefs) do
 		transparency = 0.6,
 		parent = workspace,
 	})
+end
+
+-- ── 商店攤位（出生點南方，Z = +40，三棟並排） ───────────────────────
+--   商城（貓咪）：X = -18  黃金色
+--   裝備店：      X =   0  鐵藍色
+--   合成台：      X = +18  紫色
+
+local shopDefs: { {
+	name: string,
+	label: string,
+	emoji: string,
+	actionKey: string,
+	pos: Vector3,
+	bodyColor: BrickColor,
+	roofColor: BrickColor,
+	promptText: string,
+} } = {
+	{
+		name = "ShopBuilding",
+		label = "🛒 貓咪商城",
+		emoji = "🐱",
+		actionKey = "OpenShop",
+		pos = Vector3.new(-18, 0, 40),
+		bodyColor = BrickColor.new("Bright yellow"),
+		roofColor = BrickColor.new("Bright orange"),
+		promptText = "開啟貓咪商城",
+	},
+	{
+		name = "EquipBuilding",
+		label = "⚔ 裝備商店",
+		emoji = "🗡",
+		actionKey = "OpenEquip",
+		pos = Vector3.new(0, 0, 40),
+		bodyColor = BrickColor.new("Bright blue"),
+		roofColor = BrickColor.new("Dark blue"),
+		promptText = "開啟裝備商店",
+	},
+	{
+		name = "SynthBuilding",
+		label = "✨ 合成台",
+		emoji = "🔮",
+		actionKey = "OpenSynth",
+		pos = Vector3.new(18, 0, 40),
+		bodyColor = BrickColor.new("Bright violet"),
+		roofColor = BrickColor.new("Dark indigo"),
+		promptText = "開啟合成台",
+	},
+}
+
+for _, def in ipairs(shopDefs) do
+	local folder = Instance.new("Folder")
+	folder.Name = def.name
+	folder.Parent = workspace
+
+	-- 底座平台
+	local base = makePart({
+		name = "Base",
+		size = Vector3.new(14, 0.5, 12),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 0.25, 0)),
+		color = BrickColor.new("Medium stone grey"),
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+
+	-- 主體牆
+	local body = makePart({
+		name = "Body",
+		size = Vector3.new(12, 6, 10),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 3.5, 0)),
+		color = def.bodyColor,
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+
+	-- 屋頂（棱形）
+	local roof = makePart({
+		name = "Roof",
+		size = Vector3.new(14, 2, 12),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 7.5, 0)),
+		color = def.roofColor,
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+	roof.Shape = Enum.PartType.Block
+
+	-- 門牌（正面半透明深色板）
+	local sign = makePart({
+		name = "Sign",
+		size = Vector3.new(8, 2, 0.3),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 5.5, -5.15)),
+		color = BrickColor.new("Really black"),
+		material = Enum.Material.SmoothPlastic,
+		transparency = 0.15,
+		parent = folder,
+	})
+
+	-- 看板 BillboardGui（懸浮在建築上方）
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ShopBillboard"
+	billboard.Size = UDim2.new(0, 260, 0, 110)
+	billboard.StudsOffset = Vector3.new(0, 6, 0)
+	billboard.AlwaysOnTop = false
+	billboard.Parent = body
+
+	-- 大圖示
+	local emojiLbl = Instance.new("TextLabel")
+	emojiLbl.Size = UDim2.new(1, 0, 0.45, 0)
+	emojiLbl.BackgroundTransparency = 1
+	emojiLbl.Text = def.emoji
+	emojiLbl.TextScaled = true
+	emojiLbl.Font = Enum.Font.GothamBold
+	emojiLbl.TextColor3 = Color3.new(1, 1, 1)
+	emojiLbl.TextStrokeTransparency = 0
+	emojiLbl.Parent = billboard
+
+	-- 名稱文字
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, 0, 0.45, 0)
+	nameLbl.Position = UDim2.new(0, 0, 0.5, 0)
+	nameLbl.BackgroundTransparency = 0.25
+	nameLbl.BackgroundColor3 = Color3.new(0, 0, 0)
+	nameLbl.Text = def.label
+	nameLbl.TextScaled = true
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextColor3 = Color3.new(1, 1, 1)
+	nameLbl.TextStrokeTransparency = 0.4
+	nameLbl.Parent = billboard
+
+	-- ProximityPrompt（放在 Body 上）
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "ShopPrompt"
+	prompt.ObjectText = def.label
+	prompt.ActionText = def.promptText
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.HoldDuration = 0
+	-- 用 Attribute 讓客戶端識別開哪個介面
+	prompt:SetAttribute("ShopAction", def.actionKey)
+	prompt.Parent = body
 end
 
 -- ── 光照 ──────────────────────────────────────────────────────────

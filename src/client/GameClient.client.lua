@@ -28,6 +28,10 @@ localPlayer.CharacterAdded:Connect(onCharacterAdded)
 getEvent("LoadDataResponse").OnClientEvent:Connect(function(playerData: any)
 	UIManager.init(playerData)
 	CombatClient.init()
+	-- 初始化武器狀態
+	if playerData and playerData.equipment then
+		CombatClient.currentWeapon = playerData.equipment.weapon or nil
+	end
 
 	-- 建立技能列順序對應
 	local slots: { string } = {}
@@ -60,6 +64,8 @@ end)
 -- ── 裝備變更 ─────────────────────────────────────────────────────
 getEvent("EquipmentChanged").OnClientEvent:Connect(function(loadout: any)
 	UIManager.onEquipmentChanged(loadout)
+	-- 同步武器到 CombatClient，用於決定攻擊特效
+	CombatClient.currentWeapon = loadout and loadout.weapon or nil
 end)
 
 -- ── 碎片掉落 ─────────────────────────────────────────────────────
@@ -129,6 +135,33 @@ getEvent("UpdateUI").OnClientEvent:Connect(function(key: string, value: any)
 		end
 	end
 end)
+
+-- ── 3D 商店攤位 ProximityPrompt ───────────────────────────────────
+local function bindShopPrompts()
+	local function tryBind(instance: Instance)
+		if instance:IsA("ProximityPrompt") and instance.Name == "ShopPrompt" then
+			local action = instance:GetAttribute("ShopAction")
+			instance.Triggered:Connect(function()
+				if action == "OpenShop" then
+					UIManager.openShopPanel("cats")
+				elseif action == "OpenEquip" then
+					UIManager.openShopPanel("equip")
+				elseif action == "OpenSynth" then
+					UIManager.openShopPanel("synth")
+				end
+			end)
+		end
+	end
+
+	-- 掃描已存在的 Prompt
+	for _, desc in ipairs(workspace:GetDescendants()) do
+		tryBind(desc)
+	end
+	-- 監聽後續新增（WorldSetup 是 server script，可能稍晚載入）
+	workspace.DescendantAdded:Connect(tryBind)
+end
+
+bindShopPrompts()
 
 -- ── PvP 相關 ─────────────────────────────────────────────────────
 getEvent("PvPInvite").OnClientEvent:Connect(function(challengerUserId: number, challengerName: string)
