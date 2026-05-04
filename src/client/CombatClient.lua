@@ -527,7 +527,7 @@ function CombatClient.onNPCDied(instanceId: string)
 end
 
 -- ── 攻擊揮手動畫 ─────────────────────────────────────────────────
--- 找出手臂的 Motor6D (肩部關節)，優先尋找最上層關節以帶動整個手臂
+-- 找出肩部 Motor6D，優先命中肩關節，避免誤抓到髖部導致「手不動」
 local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	local sidePattern = (side == "Right") and "Right" or "Left"
 	local candidates = {}
@@ -547,12 +547,10 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 		if string.find(m.Name, "Shoulder") then return m end
 	end
 	
-	-- 優先級 2：Part1 包含 Arm/Paw 且排除 Lower/Hand (確保是上臂)
+	-- 優先級 2：Part1 為 UpperArm / Arm（確保是上臂）
 	for _, m in ipairs(candidates) do
 		local p1 = m.Part1.Name
-		if (string.find(p1, "Arm") or string.find(p1, "Paw")) 
-			and not string.find(p1, "Lower") 
-			and not string.find(p1, "Hand") then
+		if (string.find(p1, "UpperArm") or p1 == (sidePattern .. " Arm")) then
 			return m
 		end
 	end
@@ -560,12 +558,27 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	return candidates[1]
 end
 
+-- 取得前臂關節（R15 常見為 RightElbow / LeftElbow）
+local function getElbowMotor(char: Model, side: "Right" | "Left"): Motor6D?
+	local sidePattern = (side == "Right") and "Right" or "Left"
+	for _, m in ipairs(char:GetDescendants()) do
+		if not m:IsA("Motor6D") then continue end
+		local mName = m.Name
+		local p1Name = m.Part1 and m.Part1.Name or ""
+		if (string.find(mName, sidePattern) or string.find(p1Name, sidePattern))
+			and (string.find(mName, "Elbow") or string.find(p1Name, "LowerArm")) then
+			return m
+		end
+	end
+	return nil
+end
+
 -- 揮手動畫狀態（必須在步態系統前宣告，供步態判斷攻擊中讓出前肢控制）
 local swingActive = false
 local swingConnection: RBXScriptConnection? = nil
 
--- ── 貓咪走路姿勢優化 (四足俯衝感) ──────────────────────────────────
--- 透過旋轉 RootJoint 讓貓咪在移動時身體前傾，更像四足動物行走
+-- ── 貓咪走路姿勢優化 (擬人步態) ──────────────────────────────────────
+-- 透過旋轉 RootJoint 與四肢擺動，維持擬人化貓咪的站姿移動節奏
 local function setupCatWalkTilt()
 	local currentConnection: RBXScriptConnection? = nil
 	local phase = 0
@@ -712,8 +725,11 @@ end
 local function playSwingAnimation(swingAngle: number, duration: number)
 	local char = localPlayer.Character
 	if not char then return end
-	local motor = getArmMotor(char, "Right")
-	if not motor then return end
+	local shoulderR = getArmMotor(char, "Right")
+	if not shoulderR then return end
+	local shoulderL = getArmMotor(char, "Left")
+	local elbowR = getElbowMotor(char, "Right")
+	local elbowL = getElbowMotor(char, "Left")
 
 	-- 若有舊的揮手動畫還在跑，強制中斷再重新開始
 	if swingConnection then
@@ -728,8 +744,13 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 		local elapsed = os.clock() - startTime
 		local t = elapsed / duration
 
-		if t >= 1 or not char.Parent or not motor.Parent then
-			motor.Transform = CFrame.new()
+		if t >= 1 or not char.Parent or not shoulderR.Parent then
+			shoulderR.Transform = CFrame.new()
+			if shoulderL then
+				shoulderL.Transform = CFrame.new()
+			end
+			if elbowR then elbowR.Transform = CFrame.new() end
+			if elbowL then elbowL.Transform = CFrame.new() end
 			if swingConnection then swingConnection:Disconnect(); swingConnection = nil end
 			swingActive = false
 			return
@@ -740,27 +761,41 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 		local pitch = 0
 		local yaw = 0
 		local roll = 0
+		local elbowPitch = 0
 		if t < 0.26 then
 			local p = t / 0.26
 			local ease = p * p
-			pitch = 0.46 * ease
-			yaw = -0.26 * ease
-			roll = -0.16 * ease
+			pitch = 0.52 * ease
+			yaw = -0.30 * ease
+			roll = -0.20 * ease
+			elbowPitch = -0.88 * ease
 		elseif t < 0.58 then
 			local p = (t - 0.26) / 0.32
 			local ease = 1 - (1 - p) * (1 - p)
-			pitch = 0.46 + (swingAngle - 0.46) * ease
-			yaw = -0.26 + 0.44 * ease
-			roll = -0.16 + 0.48 * ease
+			pitch = 0.52 + (swingAngle - 0.52) * ease
+			yaw = -0.30 + 0.52 * ease
+			roll = -0.20 + 0.62 * ease
+			elbowPitch = -0.88 + 1.38 * ease
 		else
 			local p = (t - 0.58) / 0.42
 			local ease = math.sin(math.clamp(p, 0, 1) * math.pi * 0.5)
 			pitch = swingAngle * (1 - ease)
-			yaw = 0.18 * (1 - ease)
-			roll = 0.32 * (1 - ease)
+			yaw = 0.22 * (1 - ease)
+			roll = 0.40 * (1 - ease)
+			elbowPitch = 0.50 * (1 - ease)
 		end
 
-		motor.Transform = CFrame.Angles(pitch, yaw, roll)
+		-- 右手主攻擊，左手反向平衡，讓揮擊更容易被看見
+		shoulderR.Transform = CFrame.Angles(pitch, yaw, roll)
+		if shoulderL then
+			shoulderL.Transform = CFrame.Angles(-pitch * 0.24, -yaw * 0.45, -roll * 0.35)
+		end
+		if elbowR then
+			elbowR.Transform = CFrame.Angles(elbowPitch, 0, 0)
+		end
+		if elbowL then
+			elbowL.Transform = CFrame.Angles(-elbowPitch * 0.25, 0, 0)
+		end
 	end)
 end
 
@@ -1114,6 +1149,11 @@ function CombatClient.playDeathAnimation()
 end
 
 function CombatClient.init()
+	if CombatClient._initialized then
+		return
+	end
+	CombatClient._initialized = true
+
 	-- 啟動貓咪走路姿勢優化
 	task.spawn(setupCatWalkTilt)
 
@@ -1129,14 +1169,16 @@ function CombatClient.init()
 	local lastHurtTime = 0
 	local function bindHurtSound(character: Model)
 		local hum = character:WaitForChild("Humanoid") :: Humanoid
+		local lastHp = hum.Health
 		hum.HealthChanged:Connect(function(newHp: number)
-			-- HP 下降（被攻擊）才播，且有 0.4s 冷卻避免連續爆音
+			-- 僅在 HP 相對上一幀下降時播音，避免回血期間反覆觸發
 			local now = os.clock()
-			if newHp < hum.MaxHealth and now - lastHurtTime > 0.4 then
+			if newHp < lastHp and now - lastHurtTime > 0.25 then
 				lastHurtTime = now
 				local hrp = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 				playSound(SFX.hurt, hrp and hrp.Position)
 			end
+			lastHp = newHp
 		end)
 	end
 
