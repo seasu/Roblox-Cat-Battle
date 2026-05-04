@@ -542,9 +542,13 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 		end
 	end
 	
-	-- 優先級 1：名稱包含 Shoulder (R6/R15 常見)
+	-- 優先級 1：名稱包含 Shoulder，且掛在軀幹上（最常見攻擊關節）
 	for _, m in ipairs(candidates) do
-		if string.find(m.Name, "Shoulder") then return m end
+		local p0 = m.Part0 and m.Part0.Name or ""
+		if string.find(m.Name, "Shoulder")
+			and (p0 == "Torso" or p0 == "UpperTorso" or p0 == "LowerTorso") then
+			return m
+		end
 	end
 	
 	-- 優先級 2：Part1 為 UpperArm / Arm（確保是上臂）
@@ -576,6 +580,14 @@ end
 -- 揮手動畫狀態（必須在步態系統前宣告，供步態判斷攻擊中讓出前肢控制）
 local swingActive = false
 local swingConnection: RBXScriptConnection? = nil
+
+local function endSwing()
+	if swingConnection then
+		swingConnection:Disconnect()
+		swingConnection = nil
+	end
+	swingActive = false
+end
 
 -- ── 貓咪走路姿勢優化 (擬人步態) ──────────────────────────────────────
 -- 透過旋轉 RootJoint 與四肢擺動，維持擬人化貓咪的站姿移動節奏
@@ -815,27 +827,67 @@ local SKILL_SWING: { [string]: { angle: number, duration: number } } = {
 local function playBothArmsSwing(angle: number, duration: number)
 	local char = localPlayer.Character
 	if not char then return end
-	local mR = getArmMotor(char, "Right")
-	local mL = getArmMotor(char, "Left")
+	local shoulderR = getArmMotor(char, "Right")
+	local shoulderL = getArmMotor(char, "Left")
+	local elbowR = getElbowMotor(char, "Right")
+	local elbowL = getElbowMotor(char, "Left")
+	if not shoulderR and not shoulderL then
+		return
+	end
 
+	if swingConnection then
+		swingConnection:Disconnect()
+		swingConnection = nil
+	end
+	swingActive = true
 	local startTime = os.clock()
-	local connection
-	connection = RunService.RenderStepped:Connect(function()
+	swingConnection = RunService.RenderStepped:Connect(function()
 		local t = (os.clock() - startTime) / duration
 		if t >= 1 or not char.Parent then
-			if mR then mR.Transform = CFrame.new() end
-			if mL then mL.Transform = CFrame.new() end
-			connection:Disconnect()
+			if shoulderR then shoulderR.Transform = CFrame.new() end
+			if shoulderL then shoulderL.Transform = CFrame.new() end
+			if elbowR then elbowR.Transform = CFrame.new() end
+			if elbowL then elbowL.Transform = CFrame.new() end
+			if swingConnection then
+				swingConnection:Disconnect()
+				swingConnection = nil
+			end
+			swingActive = false
 			return
 		end
 
-		local alpha = 1
-		if t < 0.4 then alpha = (t / 0.4) ^ 2
-		else alpha = 1 - ((t - 0.4) / 0.6) ^ 2 end
-		
-		local cf = CFrame.Angles(angle * alpha, 0, 0)
-		if mR then mR.Transform = cf end
-		if mL then mL.Transform = cf end
+		-- 三段式 AoE 揮擊，避免步態覆蓋造成「看起來沒動」
+		local pitch = 0
+		local yaw = 0
+		local roll = 0
+		local elbowPitch = 0
+		if t < 0.3 then
+			local p = t / 0.3
+			local ease = p * p
+			pitch = 0.35 * ease
+			yaw = -0.2 * ease
+			roll = -0.12 * ease
+			elbowPitch = -0.52 * ease
+		elseif t < 0.65 then
+			local p = (t - 0.3) / 0.35
+			local ease = 1 - (1 - p) * (1 - p)
+			pitch = 0.35 + (angle - 0.35) * ease
+			yaw = -0.2 + 0.34 * ease
+			roll = -0.12 + 0.38 * ease
+			elbowPitch = -0.52 + 0.92 * ease
+		else
+			local p = (t - 0.65) / 0.35
+			local ease = math.sin(math.clamp(p, 0, 1) * math.pi * 0.5)
+			pitch = angle * (1 - ease)
+			yaw = 0.14 * (1 - ease)
+			roll = 0.20 * (1 - ease)
+			elbowPitch = 0.40 * (1 - ease)
+		end
+
+		if shoulderR then shoulderR.Transform = CFrame.Angles(pitch, yaw, roll) end
+		if shoulderL then shoulderL.Transform = CFrame.Angles(pitch, -yaw, -roll) end
+		if elbowR then elbowR.Transform = CFrame.Angles(elbowPitch, 0, 0) end
+		if elbowL then elbowL.Transform = CFrame.Angles(elbowPitch, 0, 0) end
 	end)
 end
 
