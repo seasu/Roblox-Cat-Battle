@@ -151,7 +151,7 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 
 	-- ── 頭部（大球，焊在 Head Part） ─────────────────────────────
 	if head then
-		local headD = 2.12  -- 擬人比例：仍可愛但降低過大頭身比
+		local headD = 2.02  -- 擬人比例：維持可愛但更精緻
 		local catHead = ball("CatHeadShape", headD, colors.body)
 		catHead.Parent = char
 		-- 頭部回到擬人站姿高度，只保留輕微前探
@@ -161,49 +161,56 @@ local function buildCat(character: Model, colors: typeof(CAT_COLORS.whiteCat))
 		local HR = headD / 2  -- 1.2
 		for _, side in ipairs({ {-1, "L"}, {1, "R"} }) do
 			local sx, sn = side[1], side[2]
-			local ex = sx * 0.50
-			local ey = 0.12
+			local ex = sx * 0.46
+			local ey = 0.15
 			local ez = -HR * 0.85
 
-			local ew = ball("CatEyeWhite"..sn, 0.52, BrickColor.new("White"))
+			local ew = ball("CatEyeWhite"..sn, 0.56, BrickColor.new("White"))
 			ew.Parent = char
 			weld(catHead, ew, CFrame.new(ex, ey, ez + 0.05))
 
-			local ei = ball("CatEyeIris"..sn, 0.40, colors.eye)
+			local ei = ball("CatEyeIris"..sn, 0.44, colors.eye)
 			ei.Material = Enum.Material.Neon
 			ei.Parent = char
 			weld(catHead, ei, CFrame.new(ex, ey, ez))
 
-			local ep = ball("CatEyePupil"..sn, 0.22, BrickColor.new("Really black"))
+			local ep = ball("CatEyePupil"..sn, 0.24, BrickColor.new("Really black"))
 			ep.Parent = char
 			weld(catHead, ep, CFrame.new(ex, ey, ez - 0.05))
 
-			local es = ball("CatEyeShine"..sn, 0.11, BrickColor.new("White"))
+			local es = ball("CatEyeShine"..sn, 0.13, BrickColor.new("White"))
 			es.Material = Enum.Material.Neon
 			es.Parent = char
-			weld(catHead, es, CFrame.new(ex + sx * 0.10, ey + 0.11, ez - 0.07))
+			weld(catHead, es, CFrame.new(ex + sx * 0.08, ey + 0.12, ez - 0.08))
 		end
 
 		-- ── 口鼻突出區（白色橢圓球）
-		local muzzle = ball("CatMuzzle", 0.58, BrickColor.new("White"))
+		local muzzle = ball("CatMuzzle", 0.64, BrickColor.new("White"))
 		muzzle.Parent = char
-		weld(catHead, muzzle, CFrame.new(0, -0.22, -HR * 0.84))
+		weld(catHead, muzzle, CFrame.new(0, -0.24, -HR * 0.82))
 
 		-- 鼻頭（粉紅小球）
-		local nose = ball("CatNose", 0.20, BrickColor.new("Carnation pink"))
+		local nose = ball("CatNose", 0.23, BrickColor.new("Carnation pink"))
 		nose.Parent = char
-		weld(catHead, nose, CFrame.new(0, -0.10, -HR * 0.98))
+		weld(catHead, nose, CFrame.new(0, -0.08, -HR * 0.98))
 
 		-- 腮紅
 		for _, sx in ipairs({ -1, 1 }) do
-			local blush = ball("CatBlush"..sx, 0.40, BrickColor.new("Carnation pink"))
+			local blush = ball("CatBlush"..sx, 0.34, BrickColor.new("Carnation pink"))
 			blush.Transparency = 0.40
 			blush.Parent = char
-			weld(catHead, blush, CFrame.new(sx * 0.68, -0.26, -HR * 0.80))
+			weld(catHead, blush, CFrame.new(sx * 0.62, -0.28, -HR * 0.77))
+		end
+
+		-- 嘴巴（W 形，兩段細線）
+		for _, sx in ipairs({ -1, 1 }) do
+			local mouth = block("CatMouth"..sx, Vector3.new(0.12, 0.05, 0.05), BrickColor.new("Really black"))
+			mouth.Parent = char
+			weld(catHead, mouth, CFrame.new(sx * 0.08, -0.33, -HR * 0.98) * CFrame.Angles(0, 0, math.rad(20 * sx)))
 		end
 
 		-- ── 貓耳（三角形近似：用傾斜的細長塊）
-		local earW, earH, earD = 0.52, 0.72, 0.22
+		local earW, earH, earD = 0.50, 0.66, 0.22
 		for _, side in ipairs({ {-1, "L", -0.20}, {1, "R", 0.20} }) do
 			local sx, sn, tiltZ = side[1], side[2], side[3]
 			-- 耳朵外殼

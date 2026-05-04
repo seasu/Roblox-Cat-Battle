@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.2.10`
+> **Current Version:** `v0.2.11`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -143,6 +143,14 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（v0.2.11）
+- **攻擊動作根因修復**：盤查確認是「步態與攻擊動畫同時寫入肩關節 Transform」造成反覆失控與不顯示，`CombatClient.lua` 改為統一揮擊控制器（`endSwing`）、強化肩關節選取優先級，並在 AoE 揮擊也啟用 `swingActive` 守衛，避免再被步態覆蓋。
+- **揮擊展現強化**：單體與 AoE 皆改為多關節（肩+肘）三段式，並加入雙手對稱揮擊與收招復位，攻擊可視性與可控性大幅提升。
+- **主角可愛度重做**：`CatAppearance.lua` 重調頭身比、放大眼睛與高光、口鼻與腮紅比例、加入 W 形嘴，讓擬人貓更可愛且更精緻。
+- **UI 視覺重構（第一階段）**：`UIManager.lua` 新增全域 Theme（色票、圓角、描邊、漸層）與通用樣式函式，套用到基礎元件工廠、主面板、技能列、死亡畫面、toast 等核心畫面；同時補上 `buildCard`，避免裝備面板潛在崩潰。
+- **修改檔案**：`src/client/CombatClient.lua`、`src/client/UIManager.lua`、`src/server/CatAppearance.lua`、`src/shared/GameConfig.lua`
+- **功能狀態**：貓咪外觀（全身替換）✅、基礎攻擊 / 點擊 NPC（前端步態與動作表現）✅、技能系統（UI 呈現）✅
 
 ### 2026-05-04（v0.2.10）
 - **NPC 受擊音效重複修正**：`CombatClient.lua` 將受傷音效判定從 `newHp < MaxHealth` 改為「相對上一幀 HP 下降才觸發」，並降低重複保護窗口，修正怪物離開後仍反覆播放的問題。

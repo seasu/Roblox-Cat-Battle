@@ -19,6 +19,19 @@ local equipPanel: Frame?
 local cachedFragments: { [string]: number } = {}
 local cachedEquipment: { [string]: string? } = {}
 
+local THEME = {
+	textPrimary = Color3.fromRGB(248, 250, 255),
+	textSecondary = Color3.fromRGB(190, 198, 230),
+	panel = Color3.fromRGB(20, 24, 42),
+	panelAlt = Color3.fromRGB(30, 36, 58),
+	panelStroke = Color3.fromRGB(84, 95, 145),
+	button = Color3.fromRGB(70, 102, 190),
+	buttonHover = Color3.fromRGB(92, 125, 215),
+	buttonDanger = Color3.fromRGB(180, 62, 78),
+	buttonSuccess = Color3.fromRGB(70, 150, 108),
+	accent = Color3.fromRGB(120, 170, 255),
+}
+
 -- ── 基礎建構函數 ─────────────────────────────────────────────────
 
 local function getRemote(name: string): RemoteEvent
@@ -28,6 +41,37 @@ local function getFunction(name: string): RemoteFunction
 	return ReplicatedStorage:WaitForChild("RemoteFunctions"):WaitForChild(name) :: RemoteFunction
 end
 
+local function applyCorner(gui: GuiObject, radiusPx: number)
+	if gui:FindFirstChild("AutoCorner") then return end
+	local c = Instance.new("UICorner")
+	c.Name = "AutoCorner"
+	c.CornerRadius = UDim.new(0, radiusPx)
+	c.Parent = gui
+end
+
+local function applyStroke(gui: GuiObject, color: Color3, thickness: number, transparency: number)
+	if gui:FindFirstChild("AutoStroke") then return end
+	local s = Instance.new("UIStroke")
+	s.Name = "AutoStroke"
+	s.Color = color
+	s.Thickness = thickness
+	s.Transparency = transparency
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = gui
+end
+
+local function applyGradient(gui: GuiObject, topColor: Color3, bottomColor: Color3, rotation: number?)
+	if gui:FindFirstChild("AutoGradient") then return end
+	local g = Instance.new("UIGradient")
+	g.Name = "AutoGradient"
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, topColor),
+		ColorSequenceKeypoint.new(1, bottomColor),
+	})
+	g.Rotation = rotation or 90
+	g.Parent = gui
+end
+
 local function createLabel(parent: Instance, text: string, pos: UDim2, size: UDim2, fontSize: number?): TextLabel
 	local lbl = Instance.new("TextLabel")
 	lbl.Parent = parent
@@ -35,9 +79,10 @@ local function createLabel(parent: Instance, text: string, pos: UDim2, size: UDi
 	lbl.Position = pos
 	lbl.Size = size
 	lbl.BackgroundTransparency = 1
-	lbl.TextColor3 = Color3.new(1, 1, 1)
-	lbl.TextStrokeTransparency = 0.5
-	lbl.Font = Enum.Font.GothamBold
+	lbl.TextColor3 = THEME.textPrimary
+	lbl.TextStrokeTransparency = 0.6
+	lbl.TextStrokeColor3 = Color3.fromRGB(20, 24, 38)
+	lbl.Font = Enum.Font.GothamSemibold
 	lbl.TextSize = fontSize or 18
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	return lbl
@@ -48,9 +93,14 @@ local function createFrame(parent: Instance, pos: UDim2, size: UDim2, color: Col
 	f.Parent = parent
 	f.Position = pos
 	f.Size = size
-	f.BackgroundColor3 = color or Color3.new(0, 0, 0)
+	f.BackgroundColor3 = color or THEME.panel
 	f.BackgroundTransparency = alpha or 0.5
 	f.BorderSizePixel = 0
+	local isFullscreen = size.X.Scale >= 1 and size.Y.Scale >= 1 and size.X.Offset == 0 and size.Y.Offset == 0
+	if not isFullscreen then
+		applyCorner(f, 12)
+		applyStroke(f, THEME.panelStroke, 1.2, 0.42)
+	end
 	return f
 end
 
@@ -61,13 +111,80 @@ local function createButton(parent: Instance, text: string, pos: UDim2, size: UD
 	btn.Text = text
 	btn.Position = pos
 	btn.Size = size
-	btn.BackgroundColor3 = color or Color3.fromRGB(60, 120, 200)
-	btn.TextColor3 = textColor or Color3.new(1, 1, 1)
+	local baseColor = color or THEME.button
+	btn.BackgroundColor3 = baseColor
+	btn.TextColor3 = textColor or THEME.textPrimary
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 15
 	btn.BorderSizePixel = 0
-	btn.AutoButtonColor = true
+	btn.AutoButtonColor = false
+	local hoverColor = Color3.fromRGB(
+		math.clamp(baseColor.R * 255 + 22, 0, 255),
+		math.clamp(baseColor.G * 255 + 22, 0, 255),
+		math.clamp(baseColor.B * 255 + 22, 0, 255)
+	)
+	applyCorner(btn, 10)
+	applyStroke(btn, Color3.fromRGB(
+		math.clamp(baseColor.R * 255 + 25, 0, 255),
+		math.clamp(baseColor.G * 255 + 25, 0, 255),
+		math.clamp(baseColor.B * 255 + 25, 0, 255)
+	), 1.1, 0.35)
+	applyGradient(btn,
+		Color3.fromRGB(
+			math.clamp(baseColor.R * 255 + 18, 0, 255),
+			math.clamp(baseColor.G * 255 + 18, 0, 255),
+			math.clamp(baseColor.B * 255 + 18, 0, 255)
+		),
+		Color3.fromRGB(
+			math.clamp(baseColor.R * 255 - 18, 0, 255),
+			math.clamp(baseColor.G * 255 - 18, 0, 255),
+			math.clamp(baseColor.B * 255 - 18, 0, 255)
+		),
+		90
+	)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundColor3 = hoverColor,
+		}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundColor3 = baseColor,
+		}):Play()
+	end)
 	return btn
+end
+
+local function styleCardFrame(frame: Frame, baseColor: Color3)
+	frame.BorderSizePixel = 0
+	applyCorner(frame, 14)
+	applyStroke(frame, Color3.fromRGB(
+		math.clamp(baseColor.R * 255 + 22, 0, 255),
+		math.clamp(baseColor.G * 255 + 22, 0, 255),
+		math.clamp(baseColor.B * 255 + 22, 0, 255)
+	), 1.2, 0.35)
+	applyGradient(
+		frame,
+		Color3.fromRGB(
+			math.clamp(baseColor.R * 255 + 16, 0, 255),
+			math.clamp(baseColor.G * 255 + 16, 0, 255),
+			math.clamp(baseColor.B * 255 + 16, 0, 255)
+		),
+		Color3.fromRGB(
+			math.clamp(baseColor.R * 255 - 16, 0, 255),
+			math.clamp(baseColor.G * 255 - 16, 0, 255),
+			math.clamp(baseColor.B * 255 - 16, 0, 255)
+		),
+		90
+	)
+end
+
+local function applyGlassPanel(panel: Frame)
+	panel.BackgroundColor3 = THEME.panel
+	panel.BackgroundTransparency = 0.12
+	applyCorner(panel, 16)
+	applyStroke(panel, THEME.panelStroke, 1.4, 0.25)
+	applyGradient(panel, Color3.fromRGB(36, 44, 72), Color3.fromRGB(16, 20, 36), 90)
 end
 
 -- ── 主初始化 ─────────────────────────────────────────────────────
@@ -213,9 +330,6 @@ function UIManager.buildMenuButtons()
 			color)
 		btn.TextSize = 13
 		btn.ZIndex = 5
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 8)
-		corner.Parent = btn
 		-- 輕微半透明背景讓按鈕不過於搶眼
 		btn.BackgroundTransparency = 0.15
 		btn.MouseButton1Click:Connect(fn)
@@ -254,8 +368,11 @@ local function buildPanelBase(title: string): (Frame, Frame, () -> ())
 	-- 主面板
 	local panel = createFrame(overlay,
 		UDim2.new(0.05, 0, 0.05, 0), UDim2.new(0.9, 0, 0.9, 0),
-		Color3.fromRGB(20, 20, 35), 0.05)
+		THEME.panel, 0.05)
 	panel.ZIndex = 21
+	applyCorner(panel, 18)
+	applyStroke(panel, THEME.panelStroke, 1.4, 0.18)
+	applyGradient(panel, Color3.fromRGB(34, 42, 70), Color3.fromRGB(16, 20, 36), 90)
 
 	-- 標題
 	local titleLbl = createLabel(panel, title,
@@ -265,7 +382,7 @@ local function buildPanelBase(title: string): (Frame, Frame, () -> ())
 	-- 關閉按鈕
 	local closeBtn = createButton(panel, "✕ 關閉",
 		UDim2.new(0.78, 0, 0.01, 0), UDim2.new(0.2, 0, 0.08, 0),
-		Color3.fromRGB(180, 40, 40))
+		THEME.buttonDanger)
 	closeBtn.ZIndex = 22
 	local function doClose()
 		overlay:Destroy()
@@ -299,6 +416,55 @@ local function buildPanelBase(title: string): (Frame, Frame, () -> ())
 	end)
 
 	return overlay, scroll, doClose
+end
+
+-- 舊式列表卡片（給裝備快捷面板沿用）
+local function buildCard(
+	parent: Frame,
+	title: string,
+	desc: string,
+	stats: string,
+	buttonText: string,
+	buttonColor: Color3,
+	onClick: () -> ()
+): Frame
+	local card = createFrame(parent,
+		UDim2.new(0, 0, 0, 0),
+		UDim2.new(1, 0, 0, 112),
+		THEME.panelAlt, 0.08)
+	card.ZIndex = 23
+	applyCorner(card, 12)
+	applyStroke(card, THEME.panelStroke, 1.1, 0.35)
+	applyGradient(card, Color3.fromRGB(52, 60, 92), Color3.fromRGB(30, 36, 56), 90)
+
+	local titleLbl = createLabel(card, title,
+		UDim2.new(0.03, 0, 0.06, 0), UDim2.new(0.65, 0, 0.24, 0), 16)
+	titleLbl.ZIndex = 24
+	titleLbl.TextColor3 = THEME.textPrimary
+
+	local descLbl = createLabel(card, desc,
+		UDim2.new(0.03, 0, 0.30, 0), UDim2.new(0.65, 0, 0.30, 0), 13)
+	descLbl.ZIndex = 24
+	descLbl.Font = Enum.Font.Gotham
+	descLbl.TextWrapped = true
+	descLbl.TextColor3 = THEME.textSecondary
+
+	if stats ~= "" then
+		local statsLbl = createLabel(card, stats,
+			UDim2.new(0.03, 0, 0.64, 0), UDim2.new(0.65, 0, 0.22, 0), 12)
+		statsLbl.ZIndex = 24
+		statsLbl.Font = Enum.Font.GothamBold
+		statsLbl.TextColor3 = Color3.fromRGB(136, 232, 170)
+	end
+
+	local actionBtn = createButton(card, buttonText,
+		UDim2.new(0.72, 0, 0.20, 0), UDim2.new(0.25, 0, 0.58, 0),
+		buttonColor)
+	actionBtn.ZIndex = 25
+	actionBtn.TextScaled = true
+	actionBtn.MouseButton1Click:Connect(onClick)
+
+	return card
 end
 
 -- 圖示顏色（格狀卡片背景色）
@@ -643,12 +809,13 @@ function UIManager.openShopPanel(startTab: string?)
 
 	-- 標題列
 	local titleLbl = createLabel(panel, "🛒 商城",
-		UDim2.new(0.03, 0, 0.01, 0), UDim2.new(0.6, 0, 0.07, 0), 22)
+		UDim2.new(0.03, 0, 0.01, 0), UDim2.new(0.6, 0, 0.07, 0), 24)
 	titleLbl.ZIndex = 22
+	titleLbl.TextColor3 = THEME.textPrimary
 
 	local closeBtn = createButton(panel, "✕",
 		UDim2.new(0.88, 0, 0.015, 0), UDim2.new(0.1, 0, 0.065, 0),
-		Color3.fromRGB(160, 40, 40))
+		THEME.buttonDanger)
 	closeBtn.ZIndex = 22
 	local cc2 = Instance.new("UICorner"); cc2.CornerRadius = UDim.new(0,10); cc2.Parent = closeBtn
 	closeBtn.MouseButton1Click:Connect(function() overlay:Destroy() end)
@@ -1108,17 +1275,24 @@ function UIManager.buildSkillBar(unlockedSkills: { [string]: boolean }?)
 			UDim2.new(0.15 + xOffset, 0, 0.82, 0),
 			UDim2.new(0.07, 0, 0.07, 0),
 			Color3.fromRGB(40, 40, 60), 0.2)
+		bg.ZIndex = 6
+		applyCorner(bg, 10)
+		applyStroke(bg, THEME.panelStroke, 1.2, 0.3)
+		applyGradient(bg, Color3.fromRGB(58, 66, 104), Color3.fromRGB(34, 40, 70), 90)
 
 		local nameLabel = createLabel(bg, skill.displayName,
 			UDim2.new(0, 0, 0, 0),
 			UDim2.new(1, 0, 0.5, 0), 11)
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+		nameLabel.TextColor3 = THEME.textPrimary
+		nameLabel.ZIndex = 7
 
 		local keyLabel = createLabel(bg, (keys[slotIndex] or tostring(slotIndex)),
 			UDim2.new(0, 0, 0.5, 0),
 			UDim2.new(1, 0, 0.5, 0), 14)
 		keyLabel.TextXAlignment = Enum.TextXAlignment.Center
-		keyLabel.TextColor3 = Color3.fromRGB(200, 200, 100)
+		keyLabel.TextColor3 = Color3.fromRGB(255, 226, 145)
+		keyLabel.ZIndex = 7
 
 		skillButtons[skillId] = bg :: any
 
@@ -1154,15 +1328,18 @@ function UIManager.showDeathScreen()
 	local overlay = createFrame(screenGui,
 		UDim2.new(0, 0, 0, 0),
 		UDim2.new(1, 0, 1, 0),
-		Color3.fromRGB(0, 0, 0), 0.6)
+		Color3.fromRGB(8, 10, 18), 0.42)
 	overlay.Name = "DeathOverlay"
 	overlay.ZIndex = 10
+	applyGradient(overlay, Color3.fromRGB(10, 12, 22), Color3.fromRGB(24, 8, 12), 90)
 
 	local deathLabel = createLabel(overlay, "你已陣亡...",
 		UDim2.new(0.25, 0, 0.38, 0),
 		UDim2.new(0.5, 0, 0.1, 0), 36)
 	deathLabel.ZIndex = 11
-	deathLabel.TextColor3 = Color3.fromRGB(220, 60, 60)
+	deathLabel.TextColor3 = Color3.fromRGB(255, 136, 146)
+	deathLabel.TextStrokeTransparency = 0.18
+	deathLabel.TextStrokeColor3 = Color3.fromRGB(60, 12, 24)
 
 	-- 重生按鈕
 	local btn = Instance.new("TextButton")
@@ -1178,10 +1355,9 @@ function UIManager.showDeathScreen()
 	btn.ZIndex = 11
 	btn.AutoButtonColor = true
 	btn.Parent = overlay
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = btn
+	applyCorner(btn, 12)
+	applyStroke(btn, Color3.fromRGB(255, 120, 140), 1.4, 0.25)
+	applyGradient(btn, Color3.fromRGB(220, 80, 96), Color3.fromRGB(150, 40, 52), 90)
 
 	btn.MouseButton1Click:Connect(function()
 		local remoteEvents = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents")
@@ -1200,7 +1376,9 @@ end
 function UIManager.showToast(message: string, color: Color3?)
 	if not toastLabel then return end
 	toastLabel.Text = message
-	toastLabel.TextColor3 = color or Color3.new(1, 1, 1)
+	toastLabel.TextColor3 = color or THEME.textPrimary
+	toastLabel.TextStrokeTransparency = 0.35
+	toastLabel.TextStrokeColor3 = Color3.fromRGB(12, 16, 28)
 	toastLabel.TextTransparency = 0
 
 	local fadeOut = TweenService:Create(toastLabel,
@@ -1490,6 +1668,11 @@ function UIManager.openInventoryPanel()
 
 	refreshSlotBar()
 	refreshGrid()
+end
+
+-- 向後相容：舊流程仍可能呼叫 openEquipPanel，統一導向新背包面板
+function UIManager.openEquipPanel()
+	UIManager.openInventoryPanel()
 end
 
 return UIManager
