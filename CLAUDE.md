@@ -40,6 +40,19 @@
 
 若問題涉及「目前有沒有 X 功能」，**先查 `GAME_DESIGN.md`**，再閱讀程式碼確認。
 
+## 🔢 版本號規則
+
+**每次 commit 前必須更新版本號**，位於 `src/shared/GameConfig.lua`：
+
+```lua
+GameConfig.VERSION = "v0.x.x"
+```
+
+版本號規則（語意化版本）：
+- **Patch**（第三位 +1）：Bug 修正、小調整、數值微調
+- **Minor**（第二位 +1）：新增功能、新系統、較大改動
+- 版本號更新應包含在**同一個 commit** 裡，不要單獨開一個 commit
+
 ## ⚠️ 特別叮嚀
 - 不要直接修改 `.rbxl` 二進制檔案（因為你改不動）。
 - 所有的物件結構（例如 Folder, RemoteEvent）都應該在 `default.project.json` 中定義，而不是在 Studio 中手動建立。
