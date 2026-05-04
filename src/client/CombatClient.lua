@@ -323,6 +323,7 @@ end
 -- 快捷鍵對應（第 2–6 槽）
 
 local function playOneShotSound(soundId: string, position: Vector3?, volume: number?)
+	local ok, err = pcall(function()
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.Volume = volume or 0.8
@@ -342,6 +343,10 @@ local function playOneShotSound(soundId: string, position: Vector3?, volume: num
 		sound.Parent = workspace
 		sound:Play()
 		game:GetService("Debris"):AddItem(sound, 2)
+	end
+	end)
+	if not ok then
+		-- 音效載入失敗時靜默忽略（Asset 類型不符或 ID 無效）
 	end
 end
 
@@ -378,6 +383,9 @@ local function getMouseTarget(overridePos: Vector3?): (string?, Vector3?)
 	return nil, result.Position
 end
 
+-- Forward declaration：triggerSwingForSkill 定義在後段，需先宣告避免 nil 呼叫
+local triggerSwingForSkill: (skillId: string) -> ()
+
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	local char = localPlayer.Character
 	if not char then return end
@@ -394,7 +402,7 @@ function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	end
 	
 	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://12222225", vfxPos, 0.6)
+	playOneShotSound("rbxassetid://9120386436", vfxPos, 0.7)  -- 爪擊聲
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -438,7 +446,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playOneShotSound("rbxassetid://5419098675", position, isCrit and 1 or 0.8)
+	playOneShotSound("rbxassetid://3735379497", position, isCrit and 1 or 0.8)  -- 打擊音效
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,
@@ -718,7 +726,7 @@ local AOE_SKILLS = {
 	PetalSlash = true, ThunderPounce = true,
 }
 
-local function triggerSwingForSkill(skillId: string)
+triggerSwingForSkill = function(skillId: string)
 	local params = SKILL_SWING[skillId]
 	if AOE_SKILLS[skillId] then
 		playBothArmsSwing(params and params.angle or -1.5, params and params.duration or 0.32)
@@ -788,7 +796,7 @@ local function playDropCoins(pos: Vector3, amount: number)
 	end)
 
 	-- 金幣音效（輕盈的叮叮聲）
-	playOneShotSound("rbxassetid://4614471819", pos, 0.9)
+	playOneShotSound("rbxassetid://9120386436", pos, 0.9)  -- 金幣音效（爽脆）
 end
 
 -- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
@@ -880,7 +888,7 @@ local function playDropFragment(pos: Vector3, catId: string)
 	end)
 
 	-- 碎片音效（神秘晶體聲）
-	playOneShotSound("rbxassetid://4612355301", pos, 1.0)
+	playOneShotSound("rbxassetid://3735379497", pos, 1.0)  -- 碎片音效
 end
 
 -- 處理 NPCDrops 事件
