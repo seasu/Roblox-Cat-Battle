@@ -52,6 +52,7 @@
 
         "BuyEquipment":        { "$className": "RemoteEvent" },
         "OwnedItemsChanged":   { "$className": "RemoteEvent" },
+        "NPCDrops":            { "$className": "RemoteEvent" },
         "SynthesizeCat":       { "$className": "RemoteEvent" },
         "SynthesisResult":     { "$className": "RemoteEvent" },
         "UpdateFragments":     { "$className": "RemoteEvent" }

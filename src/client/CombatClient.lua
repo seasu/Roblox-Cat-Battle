@@ -454,6 +454,170 @@ function CombatClient.onNPCDied(instanceId: string)
 	end
 end
 
+-- ── 掉落動畫 ──────────────────────────────────────────────────────
+
+-- 金幣掉落：噴出多顆金幣球，向外弧形飛出後停留再淡出
+local function playDropCoins(pos: Vector3, amount: number)
+	-- 依金幣數量決定噴出顆數（3~8顆）
+	local count = math.clamp(math.floor(amount / 5) + 3, 3, 8)
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2 + math.random(-10, 10) / 10
+		local dist  = math.random(15, 30) / 10
+		local peakH = math.random(18, 30) / 10
+
+		-- 金幣球（黃色）
+		local coin = vfxPart(pos,
+			Vector3.new(0.35, 0.35, 0.35),
+			Color3.fromRGB(255, 210, 30),
+			Enum.Material.Neon,
+			0, 2.0)
+		coin.Shape = Enum.PartType.Cylinder
+
+		-- 峰值位置
+		local landPos = pos + Vector3.new(
+			math.cos(angle) * dist,
+			0,
+			math.sin(angle) * dist
+		)
+		local peakPos = (pos + landPos) / 2 + Vector3.new(0, peakH, 0)
+
+		-- 拋物線：先飛到峰值
+		local delay = (i - 1) * 0.04
+		task.delay(delay, function()
+			TweenService:Create(coin,
+				TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ Position = peakPos }):Play()
+			-- 再落到地面
+			task.delay(0.28, function()
+				TweenService:Create(coin,
+					TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ Position = landPos }):Play()
+				-- 停留後縮小淡出
+				task.delay(0.6, function()
+					TweenService:Create(coin,
+						TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+						{
+							Transparency = 1,
+							Size = Vector3.new(0.05, 0.05, 0.05),
+							Position = landPos + Vector3.new(0, 0.5, 0),
+						}):Play()
+				end)
+			end)
+		end)
+	end
+
+	-- 金光爆散（中央閃光）
+	task.delay(0.05, function()
+		vfxBurst(pos + Vector3.new(0, 0.5, 0), Color3.fromRGB(255, 230, 60), 0.3, 2.5, 0.3)
+		vfxRing(pos + Vector3.new(0, 0.3, 0), Color3.fromRGB(255, 200, 30), 0.2, 2, 0.25)
+	end)
+
+	-- 金幣音效（輕盈的叮叮聲）
+	playOneShotSound("rbxassetid://4614471819", pos, 0.9)
+end
+
+-- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
+local FRAG_CAT_COLORS: { [string]: Color3 } = {
+	shadowCat  = Color3.fromRGB(120, 60, 200),
+	flameCat   = Color3.fromRGB(255, 90, 20),
+	frostCat   = Color3.fromRGB(100, 200, 255),
+	thunderCat = Color3.fromRGB(230, 230, 0),
+	sakuraCat  = Color3.fromRGB(255, 160, 200),
+	orangeCat  = Color3.fromRGB(255, 140, 30),
+	calicoCat  = Color3.fromRGB(180, 80, 255),
+	tuxedoCat  = Color3.fromRGB(200, 200, 200),
+}
+
+local function playDropFragment(pos: Vector3, catId: string)
+	local color = FRAG_CAT_COLORS[catId] or Color3.fromRGB(200, 100, 255)
+	local landPos = pos + Vector3.new(0, 0.4, 0)
+
+	-- 大光球爆散
+	vfxBurst(pos + Vector3.new(0, 1, 0), color, 0.5, 4, 0.5)
+	vfxRing(pos + Vector3.new(0, 0.5, 0), color, 0.3, 3, 0.4)
+
+	-- 主晶體（菱形近似：Cylinder 橫放）
+	local gem = vfxPart(pos + Vector3.new(0, 1.8, 0),
+		Vector3.new(0.5, 0.8, 0.5),
+		color,
+		Enum.Material.Neon,
+		0, 3.0)
+
+	-- 緩緩落下
+	TweenService:Create(gem,
+		TweenInfo.new(0.55, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+		{ Position = landPos }):Play()
+
+	-- 停留後閃爍並消失
+	task.delay(1.5, function()
+		TweenService:Create(gem,
+			TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+			{ Transparency = 1, Size = Vector3.new(0.1, 0.1, 0.1) }):Play()
+	end)
+
+	-- 四周小晶片
+	for i = 1, 6 do
+		local a = i * math.pi / 3 + math.random(-5, 5) / 10
+		local r = math.random(8, 18) / 10
+		local chip = vfxPart(pos + Vector3.new(0, 1.2, 0),
+			Vector3.new(0.18, 0.18, 0.18),
+			color, Enum.Material.Neon, 0, 2.0)
+		chip.Shape = Enum.PartType.Ball
+		local chipDest = pos + Vector3.new(math.cos(a) * r, 0.3, math.sin(a) * r)
+		TweenService:Create(chip,
+			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Position = chipDest, Transparency = 0.2 }):Play()
+		task.delay(0.5, function()
+			TweenService:Create(chip,
+				TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{ Transparency = 1, Size = Vector3.new(0.02, 0.02, 0.02) }):Play()
+		end)
+	end
+
+	-- BillboardGui 掉落提示文字
+	local anchor = vfxPart(landPos + Vector3.new(0, 1.5, 0),
+		Vector3.new(0.1, 0.1, 0.1),
+		Color3.new(0,0,0), Enum.Material.SmoothPlastic, 1, 2.5)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 160, 0, 40)
+	bb.StudsOffset = Vector3.new(0, 0.5, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = anchor
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 0.3
+	lbl.BackgroundColor3 = Color3.fromRGB(30, 0, 50)
+	lbl.Text = "✨ 碎片掉落！"
+	lbl.TextColor3 = color
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 16
+	lbl.TextStrokeTransparency = 0.2
+	lbl.Parent = bb
+	local lc = Instance.new("UICorner"); lc.CornerRadius = UDim.new(0,6); lc.Parent = lbl
+
+	-- 文字向上飄並淡出
+	TweenService:Create(anchor,
+		TweenInfo.new(2.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = landPos + Vector3.new(0, 3.5, 0) }):Play()
+	task.delay(1.4, function()
+		TweenService:Create(lbl,
+			TweenInfo.new(0.6), { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+	end)
+
+	-- 碎片音效（神秘晶體聲）
+	playOneShotSound("rbxassetid://4612355301", pos, 1.0)
+end
+
+-- 處理 NPCDrops 事件
+function CombatClient.onNPCDrops(pos: Vector3, coins: number, fragmentCatId: string?)
+	playDropCoins(pos, coins)
+	if fragmentCatId then
+		task.delay(0.15, function()
+			playDropFragment(pos, fragmentCatId)
+		end)
+	end
+end
+
 function CombatClient.playDeathAnimation()
 	local char = localPlayer.Character
 	if not char then return end
@@ -502,6 +666,14 @@ function CombatClient.playDeathAnimation()
 end
 
 function CombatClient.init()
+	-- 監聽 NPC 掉落（金幣 + 碎片動畫）
+	local npcDropsEvent = remoteEvents:WaitForChild("NPCDrops") :: RemoteEvent
+	npcDropsEvent.OnClientEvent:Connect(function(
+		pos: Vector3, coins: number, fragmentCatId: string?
+	)
+		CombatClient.onNPCDrops(pos, coins, fragmentCatId)
+	end)
+
 	-- 滑鼠左鍵攻擊
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if gameProcessed then return end

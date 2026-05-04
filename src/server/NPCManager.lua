@@ -524,9 +524,11 @@ function NPCManager.handleDeath(instanceId, killer)
 	end
 
 	-- 碎片掉落（隨機特殊貓碎片）
+	local droppedFragment: string? = nil
 	local dropRate = FRAGMENT_DROP_RATE[def.kind] or 0.08
 	if math.random() < dropRate then
 		local fragmentCatId = SPECIAL_CAT_IDS[math.random(#SPECIAL_CAT_IDS)]
+		droppedFragment = fragmentCatId
 		if killerData then
 			killerData.catFragments = killerData.catFragments or {}
 			killerData.catFragments[fragmentCatId] = (killerData.catFragments[fragmentCatId] or 0) + 1
@@ -534,6 +536,13 @@ function NPCManager.handleDeath(instanceId, killer)
 			remoteEvents:WaitForChild("UpdateFragments"):FireClient(killer, fragmentCatId, fragCount)
 		end
 	end
+
+	-- 掉落特效通知（金幣 + 可能有碎片）
+	remoteEvents:WaitForChild("NPCDrops"):FireClient(killer,
+		Vector3.new(savedPosition.X, savedPosition.Y + 1, savedPosition.Z),
+		coinsGained,
+		droppedFragment
+	)
 
 	remoteEvents:WaitForChild("UpdateUI"):FireClient(killer, "coins", coinsGained)
 
