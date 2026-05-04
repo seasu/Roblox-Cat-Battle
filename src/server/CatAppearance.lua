@@ -1,6 +1,7 @@
 local CatAppearance = {}
 
 -- 各貓咪對應的身體主色與配色
+-- whiteCat：白色身體 + 粉紅頭/耳（main=白，accent=粉紅）
 local CAT_COLORS = {
 	whiteCat  = { main = BrickColor.new("White"),           accent = BrickColor.new("Carnation pink")  },
 	shadowCat = { main = BrickColor.new("Dark stone grey"), accent = BrickColor.new("Royal purple")    },
@@ -12,6 +13,10 @@ local CAT_COLORS = {
 	calicoCat = { main = BrickColor.new("White"),           accent = BrickColor.new("Bright orange")    },
 	tuxedoCat = { main = BrickColor.new("Really black"),    accent = BrickColor.new("White")            },
 }
+
+-- 貓頭球相對 Head Part 中心的下移量（填補頭部與軀幹之間的脖子間隙）
+local CAT_HEAD_Y_OFFSET = -0.4
+local CAT_HEAD_RADIUS   = 0.85  -- 球直徑 1.7 / 2
 
 local function weld(base, attachment)
 	local w = Instance.new("WeldConstraint")
@@ -63,13 +68,20 @@ local function restoreBodyParts(character)
 			part.Transparency = 0
 		end
 	end
+	-- 還原所有配件（頭髮、帽子等）的 Handle
+	for _, obj in ipairs(character:GetChildren()) do
+		if obj:IsA("Accessory") then
+			local handle = obj:FindFirstChild("Handle")
+			if handle and handle:IsA("BasePart") then
+				handle.Transparency = 0
+			end
+		end
+	end
 end
 
 -- ── 主體形狀替換 ───────────────────────────────────────────────────
--- 隱藏原始方形身體，以貓咪比例的 Part 替換
 local function buildCatBodyShape(character, colors)
 
-	-- 隱藏 origName，並附加一個 catName 的貓咪形狀 Part
 	local function hideAndWeld(origName, catName, catSize, catColor, localCF)
 		local orig = character:FindFirstChild(origName)
 		if not orig or not orig:IsA("BasePart") then return end
@@ -80,41 +92,50 @@ local function buildCatBodyShape(character, colors)
 		weld(orig, cat)
 	end
 
+	-- 隱藏所有配件的 Handle（頭髮、帽子等），否則會穿出貓頭
+	for _, obj in ipairs(character:GetChildren()) do
+		if obj:IsA("Accessory") then
+			local handle = obj:FindFirstChild("Handle")
+			if handle and handle:IsA("BasePart") then
+				handle.Transparency = 1
+			end
+		end
+	end
+
 	-- ── 頭部：改成球形貓臉 ──────────────────────────────────────
 	local head = character:FindFirstChild("Head")
 	if head then
 		head.Transparency = 1
-		-- 刪除 avatar 臉部貼圖（貓不需要人臉）
+		-- 刪除 avatar 臉部貼圖
 		for _, d in ipairs(head:GetChildren()) do
 			if d:IsA("Decal") then d:Destroy() end
 		end
 
-		-- 圓形貓頭（球）
-		local catHead = makePart("CatHeadShape", Vector3.new(1.7, 1.7, 1.7), colors.accent, Enum.PartType.Ball)
-		catHead.CFrame = head.CFrame
+		-- 圓形貓頭（球），向下偏移以貼近軀幹，填補脖子間隙
+		local catHead = makePart("CatHeadShape", Vector3.new(1.7, 1.7, 1.7), colors.main, Enum.PartType.Ball)
+		catHead.CFrame = head.CFrame * CFrame.new(0, CAT_HEAD_Y_OFFSET, 0)
 		catHead.Parent = character
 		weld(head, catHead)
 
-		-- 眼睛
+		-- 眼睛（Y 位置跟著球頭偏移量調整）
 		local eyeL = makePart("CatFaceEyeL", Vector3.new(0.22, 0.22, 0.22), BrickColor.new("Really black"), Enum.PartType.Ball)
-		eyeL.CFrame = head.CFrame * CFrame.new(-0.38, 0.12, -0.82)
+		eyeL.CFrame = head.CFrame * CFrame.new(-0.38, 0.12 + CAT_HEAD_Y_OFFSET, -0.82)
 		eyeL.Parent = character
 		weld(head, eyeL)
 
 		local eyeR = makePart("CatFaceEyeR", Vector3.new(0.22, 0.22, 0.22), BrickColor.new("Really black"), Enum.PartType.Ball)
-		eyeR.CFrame = head.CFrame * CFrame.new(0.38, 0.12, -0.82)
+		eyeR.CFrame = head.CFrame * CFrame.new(0.38, 0.12 + CAT_HEAD_Y_OFFSET, -0.82)
 		eyeR.Parent = character
 		weld(head, eyeR)
 
-		-- 鼻子（粉紅小球）
+		-- 鼻子
 		local nose = makePart("CatFaceNose", Vector3.new(0.2, 0.15, 0.15), BrickColor.new("Carnation pink"), Enum.PartType.Ball)
-		nose.CFrame = head.CFrame * CFrame.new(0, -0.14, -0.84)
+		nose.CFrame = head.CFrame * CFrame.new(0, -0.14 + CAT_HEAD_Y_OFFSET, -0.84)
 		nose.Parent = character
 		weld(head, nose)
 	end
 
 	-- ── 軀幹（R6）─────────────────────────────────────────────────
-	-- 圓胖貓肚子，比人體軀幹更寬更深
 	hideAndWeld("Torso", "CatTorso", Vector3.new(2.8, 2.2, 1.8), colors.main)
 
 	-- ── 軀幹（R15）────────────────────────────────────────────────
@@ -146,34 +167,37 @@ local function buildCatBodyShape(character, colors)
 	hideAndWeld("RightFoot",     "CatFootR",     Vector3.new(0.6, 0.35, 0.8),  colors.main)
 end
 
--- ── 貓耳（含粉紅內耳，根據頭部實際高度定位） ──────────────────────
+-- ── 貓耳（耳朵根部對齊球頭頂端） ──────────────────────────────────
 local function addCatEars(character, colors)
 	local head = character:FindFirstChild("Head")
 	if not head then return end
 
-	local earSize = Vector3.new(0.28, 0.45, 0.22)
-	local headHalfY = head.Size.Y / 2
+	local earSize   = Vector3.new(0.28, 0.45, 0.22)
 	local earHalfY  = earSize.Y / 2
+	-- 球頭頂端（相對 Head 中心）= 向下偏移量 + 球半徑
+	local catBallTopY = CAT_HEAD_Y_OFFSET + CAT_HEAD_RADIUS
+	-- 耳朵中心剛好在球頭頂端上方一點
+	local earCenterY  = catBallTopY + earHalfY - 0.04
 	local tiltL = CFrame.Angles(0, 0, -0.12)
 	local tiltR = CFrame.Angles(0, 0,  0.12)
 
-	local earL = makePart("CatEarLeft", earSize, colors.accent)
-	earL.CFrame = head.CFrame * CFrame.new(-0.27, headHalfY + earHalfY - 0.04, -0.04) * tiltL
+	local earL = makePart("CatEarLeft", earSize, colors.main)
+	earL.CFrame = head.CFrame * CFrame.new(-0.27, earCenterY, -0.04) * tiltL
 	earL.Parent = character
 	weld(head, earL)
 
 	local earLInner = makePart("CatEarLeftInner", Vector3.new(0.16, 0.27, 0.14), BrickColor.new("Carnation pink"))
-	earLInner.CFrame = head.CFrame * CFrame.new(-0.27, headHalfY + earHalfY - 0.04, -0.07) * tiltL
+	earLInner.CFrame = head.CFrame * CFrame.new(-0.27, earCenterY, -0.07) * tiltL
 	earLInner.Parent = character
 	weld(head, earLInner)
 
-	local earR = makePart("CatEarRight", earSize, colors.accent)
-	earR.CFrame = head.CFrame * CFrame.new(0.27, headHalfY + earHalfY - 0.04, -0.04) * tiltR
+	local earR = makePart("CatEarRight", earSize, colors.main)
+	earR.CFrame = head.CFrame * CFrame.new(0.27, earCenterY, -0.04) * tiltR
 	earR.Parent = character
 	weld(head, earR)
 
 	local earRInner = makePart("CatEarRightInner", Vector3.new(0.16, 0.27, 0.14), BrickColor.new("Carnation pink"))
-	earRInner.CFrame = head.CFrame * CFrame.new(0.27, headHalfY + earHalfY - 0.04, -0.07) * tiltR
+	earRInner.CFrame = head.CFrame * CFrame.new(0.27, earCenterY, -0.07) * tiltR
 	earRInner.Parent = character
 	weld(head, earRInner)
 end
