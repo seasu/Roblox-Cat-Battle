@@ -155,6 +155,18 @@ getEvent("PurchaseCat").OnServerEvent:Connect(function(player: Player, catId: st
 	ShopManager.handlePurchaseRequest(player, catId)
 end)
 
+getEvent("BuyEquipment").OnServerEvent:Connect(function(player: Player, itemId: string)
+	ShopManager.handleBuyEquipment(player, itemId)
+end)
+
+getEvent("SynthesizeCat").OnServerEvent:Connect(function(player: Player, catId: string)
+	local ok, msg = CatManager.synthesizeCat(player, catId)
+	getEvent("SynthesisResult"):FireClient(player, ok, msg)
+	if ok then
+		CatManager.pushAppearanceUpdate(player)
+	end
+end)
+
 getEvent("RequestPvP").OnServerEvent:Connect(function(player: Player, targetUserId: number)
 	PvPManager.handleChallenge(player, targetUserId)
 end)

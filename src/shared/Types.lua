@@ -89,6 +89,7 @@ export type PlayerData = {
 	activeCatId: string,
 	equipment: EquipmentLoadout,
 	unlockedSkills: { [string]: boolean },
+	catFragments: { [string]: number },  -- 各特殊貓的碎片數量，10 片可合成
 	activeColorShiftMode: string?,
 	createdAt: number,
 	lastSeen: number,

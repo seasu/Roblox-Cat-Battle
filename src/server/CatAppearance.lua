@@ -213,7 +213,7 @@ local function addCatTail(character, colors)
 	tail.Parent = character
 	weld(hrp, tail)
 
-	local tip = makePart("CatTailTip", Vector3.new(0.3, 0.3, 0.3), BrickColor.new("White"), Enum.PartType.Ball)
+	local tip = makePart("CatTailTip", Vector3.new(0.3, 0.3, 0.3), colors.accent, Enum.PartType.Ball)
 	tip.CFrame = tail.CFrame * CFrame.new(0, tailSize.Y / 2 + 0.15, 0)
 	tip.Parent = character
 	weld(tail, tip)

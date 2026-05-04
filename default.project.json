@@ -47,7 +47,12 @@
         "RequestPvP":          { "$className": "RemoteEvent" },
         "PvPInvite":           { "$className": "RemoteEvent" },
         "PvPAccepted":         { "$className": "RemoteEvent" },
-        "PvPResult":           { "$className": "RemoteEvent" }
+        "PvPResult":           { "$className": "RemoteEvent" },
+
+        "BuyEquipment":        { "$className": "RemoteEvent" },
+        "SynthesizeCat":       { "$className": "RemoteEvent" },
+        "SynthesisResult":     { "$className": "RemoteEvent" },
+        "UpdateFragments":     { "$className": "RemoteEvent" }
       },
 
       "RemoteFunctions": {

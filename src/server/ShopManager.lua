@@ -87,6 +87,31 @@ function ShopManager.handleCoinPurchase(player: Player, itemId: string)
 	remotes:WaitForChild("UpdateUI"):FireClient(player, "coins", -item.price)
 end
 
+-- 購買裝備（金幣）並同時裝備上去
+function ShopManager.handleBuyEquipment(player: Player, itemId: string)
+	local data = DataStore.getData(player)
+	if not data then return end
+
+	local item = EquipmentData.getItemById(itemId)
+	if not item then
+		purchaseResultEvent:FireClient(player, false, "無效的裝備 ID。")
+		return
+	end
+	if data.coins < item.price then
+		purchaseResultEvent:FireClient(player, false,
+			"金幣不足！需要 " .. item.price .. " 金幣，目前只有 " .. data.coins .. " 金幣。")
+		return
+	end
+
+	data.coins -= item.price
+	data.equipment[item.slot] = itemId
+
+	local remotes = game.ReplicatedStorage:WaitForChild("RemoteEvents")
+	remotes:WaitForChild("EquipmentChanged"):FireClient(player, data.equipment)
+	remotes:WaitForChild("UpdateUI"):FireClient(player, "coins", -item.price)
+	purchaseResultEvent:FireClient(player, true, "已裝備「" .. item.displayName .. "」！")
+end
+
 function ShopManager.getCatalog()
 	local cats = {}
 	for catId, cat in pairs(CatData.cats) do
