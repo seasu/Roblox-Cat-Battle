@@ -580,15 +580,17 @@ local function setupCatWalkTilt()
 
 		findMotors()
 		local lastTime = os.clock()
+		-- 蹲伏角度目前值（用於平滑過渡）
+		local currentTilt = 0
 
 		currentConnection = RunService.RenderStepped:Connect(function()
 			if not char.Parent or not hum.Parent then
 				if currentConnection then currentConnection:Disconnect() end
 				return
 			end
+			-- 若 motor 消失（換貓/重生）重新尋找
 			if not rootMotor or not rootMotor.Parent then
 				findMotors()
-				if not rootMotor then return end
 			end
 
 			local now = os.clock()
@@ -596,38 +598,65 @@ local function setupCatWalkTilt()
 			lastTime   = now
 
 			local isMoving = hum.MoveDirection.Magnitude > 0.1
+			local speed    = Vector3.new(
+				char:FindFirstChild("HumanoidRootPart") and
+				(char:FindFirstChild("HumanoidRootPart") :: BasePart).AssemblyLinearVelocity.X or 0,
+				0,
+				char:FindFirstChild("HumanoidRootPart") and
+				(char:FindFirstChild("HumanoidRootPart") :: BasePart).AssemblyLinearVelocity.Z or 0
+			).Magnitude
 
-			-- 跑步時推進步態相位（速度正比於 WalkSpeed）
+			-- 步態頻率：速度越快步頻越高
 			if isMoving then
-				phase = (phase + dt * (hum.WalkSpeed / 16) * 7.0) % (math.pi * 2)
+				local freq = 5.5 + speed * 0.18  -- 靜走 ~5.5Hz，全速跑約 7-8Hz
+				phase = (phase + dt * freq) % (math.pi * 2)
+			else
+				-- 靜止時相位緩慢歸零（讓四肢回到蹲伏待機位）
+				phase = phase * (1 - math.min(dt * 6, 1))
 			end
 
-			-- ── 軀幹前傾：移動時 ~65°，靜止時 ~14°（維持貓科蹲伏感）
-			local targetTilt = isMoving and (math.pi * 0.36) or (math.pi * 0.078)
-			rootMotor.Transform = rootMotor.Transform:Lerp(CFrame.Angles(targetTilt, 0, 0), 0.13)
+			-- ── 軀幹前傾（RootJoint Transform）────────────────────────
+			-- 貓咪走路時軀幹前傾 ~35°，靜止蹲伏 ~12°
+			local targetTilt = isMoving and (math.pi * 0.19) or (math.pi * 0.065)
+			-- 快速平滑收斂（Lerp 係數 0.25，約 4 幀到位）
+			currentTilt = currentTilt + (targetTilt - currentTilt) * math.min(dt * 18, 1)
+			if rootMotor then
+				rootMotor.Transform = CFrame.Angles(currentTilt, 0, 0)
+			end
 
-			-- ── 四肢步態：對角步態（右前＋左後同相，左前＋右後反相）
-			-- 攻擊揮手動畫使用 swingActive 旗標互斥，不再依賴 RenderStepped 順序
-			local swingAmp  = isMoving and 1.0 or 0.0
-			local lerpSpeed = isMoving and 1.0 or 0.08
-			local sR = math.sin(phase) * swingAmp
-			local sL = math.sin(phase + math.pi) * swingAmp
+			-- ── 四肢對角步態 ──────────────────────────────────────────
+			-- 移動時全幅擺動；靜止時平滑歸零（前肢微前傾待機）
+			local moveBlend  = math.min(speed / 4, 1)  -- 0(靜)→1(全速)
+			local limbLerp   = isMoving and 0.35 or 0.12  -- 移動時快速跟上，靜止慢速歸位
 
-			-- 前肢（手臂）：攻擊期間讓出控制權
+			local sR  = math.sin(phase) * moveBlend         -- 右前相位
+			local sL  = math.sin(phase + math.pi) * moveBlend  -- 左前反相
+
+			-- 前肢（手臂）：大幅前後擺，攻擊時讓出
 			if not swingActive then
 				if armR then
-					armR.Transform = armR.Transform:Lerp(CFrame.Angles(-sR * 1.15, 0, 0), lerpSpeed)
+					-- 移動：對角擺動；靜止：微向前傾（蹲姿）
+					local targetR = isMoving and CFrame.Angles(-sR * 1.55, 0, 0)
+						or CFrame.Angles(0.22, 0, 0)
+					armR.Transform = armR.Transform:Lerp(targetR, limbLerp)
 				end
 				if armL then
-					armL.Transform = armL.Transform:Lerp(CFrame.Angles(-sL * 1.15, 0, 0), lerpSpeed)
+					local targetL = isMoving and CFrame.Angles(-sL * 1.55, 0, 0)
+						or CFrame.Angles(0.22, 0, 0)
+					armL.Transform = armL.Transform:Lerp(targetL, limbLerp)
 				end
 			end
-			-- 後肢（腿）：始終由步態控制
+
+			-- 後肢（腿）：與對側前肢反相
 			if legR then
-				legR.Transform = legR.Transform:Lerp(CFrame.Angles(sL * 0.65, 0, 0), lerpSpeed)
+				local targetLR = isMoving and CFrame.Angles(sL * 1.10, 0, 0)
+					or CFrame.Angles(0.15, 0, 0)
+				legR.Transform = legR.Transform:Lerp(targetLR, limbLerp)
 			end
 			if legL then
-				legL.Transform = legL.Transform:Lerp(CFrame.Angles(sR * 0.65, 0, 0), lerpSpeed)
+				local targetLL = isMoving and CFrame.Angles(sR * 1.10, 0, 0)
+					or CFrame.Angles(0.15, 0, 0)
+				legL.Transform = legL.Transform:Lerp(targetLL, limbLerp)
 			end
 		end)
 	end
