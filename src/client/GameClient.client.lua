@@ -130,6 +130,33 @@ getEvent("UpdateUI").OnClientEvent:Connect(function(key: string, value: any)
 	end
 end)
 
+-- ── 3D 商店攤位 ProximityPrompt ───────────────────────────────────
+local function bindShopPrompts()
+	local function tryBind(instance: Instance)
+		if instance:IsA("ProximityPrompt") and instance.Name == "ShopPrompt" then
+			local action = instance:GetAttribute("ShopAction")
+			instance.Triggered:Connect(function()
+				if action == "OpenShop" then
+					UIManager.openShopPanel("cats")
+				elseif action == "OpenEquip" then
+					UIManager.openShopPanel("equip")
+				elseif action == "OpenSynth" then
+					UIManager.openShopPanel("synth")
+				end
+			end)
+		end
+	end
+
+	-- 掃描已存在的 Prompt
+	for _, desc in ipairs(workspace:GetDescendants()) do
+		tryBind(desc)
+	end
+	-- 監聽後續新增（WorldSetup 是 server script，可能稍晚載入）
+	workspace.DescendantAdded:Connect(tryBind)
+end
+
+bindShopPrompts()
+
 -- ── PvP 相關 ─────────────────────────────────────────────────────
 getEvent("PvPInvite").OnClientEvent:Connect(function(challengerUserId: number, challengerName: string)
 	UIManager.showToast(challengerName .. " 向你發起挑戰！（自動接受）", Color3.fromRGB(255, 180, 50))

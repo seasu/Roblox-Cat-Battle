@@ -135,16 +135,16 @@ function UIManager.buildMenuButtons()
 		UDim2.new(0.13, 0, 0.055, 0),
 		Color3.fromRGB(180, 100, 20))
 	shopBtn.MouseButton1Click:Connect(function()
-		UIManager.openShopPanel()
+		UIManager.openShopPanel("cats")
 	end)
 
-	-- 裝備按鈕（左下）
+	-- 裝備按鈕（左下）— 直接開商城裝備 tab
 	local equipBtn = createButton(screenGui, "⚔ 裝備",
 		UDim2.new(0.01, 0, 0.88, 0),
 		UDim2.new(0.13, 0, 0.055, 0),
 		Color3.fromRGB(60, 80, 160))
 	equipBtn.MouseButton1Click:Connect(function()
-		UIManager.openEquipPanel()
+		UIManager.openShopPanel("equip")
 	end)
 
 	-- PvP 按鈕（中下）
@@ -220,48 +220,127 @@ local function buildPanelBase(title: string): (Frame, Frame, () -> ())
 	return overlay, scroll, doClose
 end
 
--- 建立一張物品卡片（行容器）
+-- 圖示色塊（左側方形色條，作為視覺識別）
+local ICON_COLORS: { [string]: Color3 } = {
+	-- 貓咪
+	whiteCat    = Color3.fromRGB(230, 230, 230),
+	shadowCat   = Color3.fromRGB(60,  40,  90),
+	flameCat    = Color3.fromRGB(220, 80,  20),
+	frostCat    = Color3.fromRGB(80,  180, 220),
+	thunderCat  = Color3.fromRGB(200, 200, 0),
+	sakuraCat   = Color3.fromRGB(240, 140, 170),
+	orangeCat   = Color3.fromRGB(230, 140, 30),
+	calicoCat   = Color3.fromRGB(160, 80,  220),
+	tuxedoCat   = Color3.fromRGB(30,  30,  30),
+	-- 裝備槽
+	collar      = Color3.fromRGB(120, 200, 100),
+	hat         = Color3.fromRGB(100, 160, 240),
+	weapon      = Color3.fromRGB(220, 120, 60),
+}
+
+-- 建立一張物品卡片，含左側圖示色條
+-- iconKey: ICON_COLORS 的索引；fragData: {current, max} 用於合成進度條
 local function buildCard(parent: Frame, name: string, desc: string, rightText: string,
-	btnText: string, btnColor: Color3, onBuy: (() -> ())?): Frame
+	btnText: string, btnColor: Color3, onBuy: (() -> ())?,
+	iconKey: string?, fragData: { current: number, max: number }?): Frame
+
+	local cardHeight = fragData and 90 or 74
 	local card = createFrame(parent,
-		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0, 70),
-		Color3.fromRGB(35, 35, 55), 0.1)
+		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0, cardHeight),
+		Color3.fromRGB(28, 28, 45), 0.05)
 	card.ZIndex = 23
 
+	-- 左側圖示色條
+	local iconColor = (iconKey and ICON_COLORS[iconKey]) or Color3.fromRGB(80, 80, 100)
+	local iconBar = createFrame(card,
+		UDim2.new(0, 0, 0, 0), UDim2.new(0, 5, 1, 0),
+		iconColor, 0)
+	iconBar.ZIndex = 24
+
+	-- 圖示色塊（左側大色塊，顯示縮略識別色）
+	local iconBox = createFrame(card,
+		UDim2.new(0, 8, 0.1, 0), UDim2.new(0, 42, 0.8, 0),
+		iconColor, 0.1)
+	iconBox.ZIndex = 24
+	-- 圓角
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = iconBox
+
+	-- 首字圖示文字
+	local abbrev = string.upper(string.sub(name, 1, 1))
+	local iconTxt = createLabel(iconBox, abbrev,
+		UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 1, 0), 22)
+	iconTxt.TextXAlignment = Enum.TextXAlignment.Center
+	iconTxt.TextColor3 = Color3.new(1, 1, 1)
+	iconTxt.ZIndex = 25
+
+	-- 名稱
 	local nameLbl = createLabel(card, name,
-		UDim2.new(0.02, 0, 0.05, 0), UDim2.new(0.55, 0, 0.45, 0), 16)
+		UDim2.new(0, 58, 0.05, 0), UDim2.new(0.5, 0, 0.4, 0), 15)
 	nameLbl.ZIndex = 24
 
+	-- 描述
 	local descLbl = createLabel(card, desc,
-		UDim2.new(0.02, 0, 0.52, 0), UDim2.new(0.55, 0, 0.4, 0), 12)
-	descLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+		UDim2.new(0, 58, 0.48, 0), UDim2.new(0.5, 0, 0.38, 0), 11)
+	descLbl.TextColor3 = Color3.fromRGB(160, 160, 180)
 	descLbl.Font = Enum.Font.Gotham
 	descLbl.ZIndex = 24
 
+	-- 右側資訊文字
 	local rightLbl = createLabel(card, rightText,
-		UDim2.new(0.58, 0, 0.05, 0), UDim2.new(0.2, 0, 0.9, 0), 13)
+		UDim2.new(0.6, 0, 0.05, 0), UDim2.new(0.17, 0, 0.85, 0), 12)
 	rightLbl.TextXAlignment = Enum.TextXAlignment.Center
+	rightLbl.TextColor3 = Color3.fromRGB(200, 200, 220)
 	rightLbl.ZIndex = 24
 
+	-- 合成碎片進度條（可選）
+	if fragData then
+		local barBg = createFrame(card,
+			UDim2.new(0, 58, 0, cardHeight - 20), UDim2.new(0.55, 0, 0, 10),
+			Color3.fromRGB(40, 40, 60), 0)
+		barBg.ZIndex = 24
+		local pct = math.clamp(fragData.current / fragData.max, 0, 1)
+		local barFill = createFrame(barBg,
+			UDim2.new(0, 0, 0, 0), UDim2.new(pct, 0, 1, 0),
+			pct >= 1 and Color3.fromRGB(160, 60, 220) or Color3.fromRGB(80, 120, 200), 0)
+		barFill.ZIndex = 25
+		local barCorner = Instance.new("UICorner")
+		barCorner.CornerRadius = UDim.new(1, 0)
+		barCorner.Parent = barBg
+		local barCorner2 = Instance.new("UICorner")
+		barCorner2.CornerRadius = UDim.new(1, 0)
+		barCorner2.Parent = barFill
+	end
+
+	-- 按鈕或狀態標籤
 	if onBuy then
 		local btn = createButton(card, btnText,
-			UDim2.new(0.8, 0, 0.12, 0), UDim2.new(0.18, 0, 0.76, 0),
+			UDim2.new(0.79, 0, 0.12, 0), UDim2.new(0.19, 0, 0.76, 0),
 			btnColor)
 		btn.TextSize = 13
 		btn.ZIndex = 24
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 6)
+		btnCorner.Parent = btn
 		btn.MouseButton1Click:Connect(onBuy)
 	else
 		local statusLbl = createLabel(card, btnText,
-			UDim2.new(0.8, 0, 0.12, 0), UDim2.new(0.18, 0, 0.76, 0), 13)
+			UDim2.new(0.79, 0, 0.12, 0), UDim2.new(0.19, 0, 0.76, 0), 13)
 		statusLbl.TextXAlignment = Enum.TextXAlignment.Center
-		statusLbl.TextColor3 = Color3.fromRGB(100, 220, 100)
+		if btnColor == Color3.new(0, 0, 0) then
+			statusLbl.TextColor3 = Color3.fromRGB(120, 220, 120)
+		else
+			statusLbl.TextColor3 = btnColor
+		end
 		statusLbl.ZIndex = 24
 	end
 
 	return card
 end
 
-function UIManager.openShopPanel()
+-- startTab: "cats" | "equip" | "synth"（nil = 預設貓咪）
+function UIManager.openShopPanel(startTab: string?)
 	if shopPanel then shopPanel:Destroy() end
 	local playerData = getFunction("GetPlayerData"):InvokeServer()
 	if not playerData then return end
@@ -291,27 +370,24 @@ function UIManager.openShopPanel()
 		for i, cat in ipairs(catalog or {}) do
 			local owned = playerData.ownedCats and playerData.ownedCats[cat.id]
 			local isActive = currentCatId == cat.id
-			local rightText = isActive and "▶ 使用中" or (cat.price .. " RB")
+			local rightText = isActive and "▶ 使用中" or (cat.price == 0 and "免費" or (cat.price .. " RB"))
 			local card: Frame
 			if isActive then
-				-- 目前使用中的貓咪
 				card = buildCard(scroll, cat.displayName, cat.description, rightText, "使用中",
-					Color3.fromRGB(40, 160, 80))
+					Color3.fromRGB(40, 160, 80), nil, cat.id)
 			elseif owned then
-				-- 已擁有但未使用，顯示「切換使用」按鈕
 				card = buildCard(scroll, cat.displayName, cat.description, rightText, "切換使用",
 					Color3.fromRGB(60, 120, 200), function()
 						getRemote("SelectCat"):FireServer(cat.id)
 						currentCatId = cat.id
 						UIManager.showToast("切換至 " .. cat.displayName, Color3.fromRGB(100, 200, 255))
-						task.delay(0.3, function() UIManager.openShopPanel() end)
-					end)
+						task.delay(0.3, function() UIManager.openShopPanel("cats") end)
+					end, cat.id)
 			else
-				-- 未擁有，顯示購買按鈕
 				card = buildCard(scroll, cat.displayName, cat.description, rightText, "購買",
-					Color3.fromRGB(180, 100, 20), function()
+					Color3.fromRGB(200, 120, 20), function()
 						getRemote("PurchaseCat"):FireServer(cat.id)
-					end)
+					end, cat.id)
 			end
 			if card then card.LayoutOrder = i end
 		end
@@ -319,40 +395,48 @@ function UIManager.openShopPanel()
 
 	local function showEquipTab()
 		clearScroll()
-		local slots = { collar = "項圈", hat = "帽子", weapon = "武器" }
+		-- 固定排序：項圈 → 帽子 → 武器
+		local slotOrder = { { id = "collar", name = "項圈" }, { id = "hat", name = "帽子" }, { id = "weapon", name = "武器" } }
 		local order = 0
-		for slotId, slotName in pairs(slots) do
+		for _, slotDef in ipairs(slotOrder) do
+			local slotId = slotDef.id
+			local slotName = slotDef.name
 			local items = EquipmentData.getItemsBySlot(slotId)
 			table.sort(items, function(a, b) return a.price < b.price end)
 			for _, item in ipairs(items) do
 				order += 1
 				local equipped = cachedEquipment[slotId] == item.id
-				local stats = string.format("+ATK%d +DEF%d +HP%d",
-					item.statBonus.attack, item.statBonus.defense, item.statBonus.maxHp)
-				local rightText = slotName .. "\n" .. stats
+				local atkStr = item.statBonus.attack ~= 0 and string.format(" ATK%+d", item.statBonus.attack) or ""
+				local defStr = item.statBonus.defense ~= 0 and string.format(" DEF%+d", item.statBonus.defense) or ""
+				local hpStr  = item.statBonus.maxHp   ~= 0 and string.format(" HP%+d",  item.statBonus.maxHp)  or ""
+				local spdStr = item.statBonus.speed   ~= 0 and string.format(" SPD%+d", item.statBonus.speed)  or ""
+				local stats = (atkStr .. defStr .. hpStr .. spdStr):gsub("^ ", "")
+				local rightText = "[" .. slotName .. "]\n" .. (stats ~= "" and stats or "—")
 				local card
 				if equipped then
-					card = buildCard(scroll, item.displayName, item.description, rightText, "✓ 已裝備", Color3.new(0,0,0))
-					-- 卸下按鈕
+					card = buildCard(scroll, item.displayName, item.description, rightText,
+						"✓ 已裝備", Color3.new(0, 0, 0), nil, slotId)
+					-- 卸下按鈕疊加
 					local unequipBtn = createButton(card, "卸下",
-						UDim2.new(0.8, 0, 0.55, 0), UDim2.new(0.18, 0, 0.38, 0),
-						Color3.fromRGB(120, 40, 40))
+						UDim2.new(0.79, 0, 0.55, 0), UDim2.new(0.19, 0, 0.35, 0),
+						Color3.fromRGB(140, 40, 40))
 					unequipBtn.TextSize = 12
-					unequipBtn.ZIndex = 24
+					unequipBtn.ZIndex = 25
+					local uCorner = Instance.new("UICorner")
+					uCorner.CornerRadius = UDim.new(0, 5)
+					uCorner.Parent = unequipBtn
 					unequipBtn.MouseButton1Click:Connect(function()
 						getRemote("UnequipItem"):FireServer(slotId)
 						cachedEquipment[slotId] = nil
-						UIManager.openShopPanel()  -- 重開刷新
+						UIManager.openShopPanel("equip")
 					end)
 				else
-					card = buildCard(scroll, item.displayName,
-						item.description,
-						rightText,
-						item.price .. "金",
-						Color3.fromRGB(60, 140, 60), function()
+					card = buildCard(scroll, item.displayName, item.description, rightText,
+						item.price .. " 金",
+						Color3.fromRGB(50, 150, 60), function()
 							getRemote("BuyEquipment"):FireServer(item.id)
-							task.delay(0.3, function() UIManager.openShopPanel() end)
-						end)
+							task.delay(0.3, function() UIManager.openShopPanel("equip") end)
+						end, slotId)
 				end
 				if card then card.LayoutOrder = order end
 			end
@@ -370,18 +454,21 @@ function UIManager.openShopPanel()
 			if not cat then continue end
 			local frags = cachedFragments[catId] or 0
 			local owned = playerData.ownedCats and playerData.ownedCats[catId]
-			local fragText = string.format("碎片 %d / 10", frags)
+			local fragText = string.format("%d / 10 碎片", frags)
+			local fd = { current = frags, max = 10 }
 			local card
 			if owned then
-				card = buildCard(scroll, cat.displayName, cat.description, fragText, "✓ 已擁有", Color3.new(0,0,0))
+				card = buildCard(scroll, cat.displayName, cat.description, fragText,
+					"✓ 已擁有", Color3.new(0, 0, 0), nil, catId, fd)
 			elseif frags >= 10 then
-				card = buildCard(scroll, cat.displayName, cat.description, fragText, "合成！",
-					Color3.fromRGB(150, 60, 200), function()
+				card = buildCard(scroll, cat.displayName, cat.description, fragText,
+					"合成！", Color3.fromRGB(160, 60, 220), function()
 						getRemote("SynthesizeCat"):FireServer(catId)
-						task.delay(0.5, function() UIManager.openShopPanel() end)
-					end)
+						task.delay(0.5, function() UIManager.openShopPanel("synth") end)
+					end, catId, fd)
 			else
-				card = buildCard(scroll, cat.displayName, cat.description, fragText, "待收集", Color3.new(0,0,0))
+				card = buildCard(scroll, cat.displayName, cat.description, fragText,
+					"待收集", Color3.fromRGB(80, 80, 100), nil, catId, fd)
 			end
 			if card then card.LayoutOrder = i end
 		end
@@ -389,22 +476,50 @@ function UIManager.openShopPanel()
 
 	-- Tab 建立
 	local tabs = {
-		{ name = "貓咪", fn = showCatsTab },
-		{ name = "裝備", fn = showEquipTab },
-		{ name = "合成", fn = showSynthesisTab },
+		{ name = "🐱 貓咪", key = "cats", fn = showCatsTab },
+		{ name = "⚔ 裝備",  key = "equip", fn = showEquipTab },
+		{ name = "✨ 合成", key = "synth", fn = showSynthesisTab },
 	}
 	scroll.Position = UDim2.new(0, 0, 0.21, 0)
 	scroll.Size = UDim2.new(1, 0, 0.79, 0)
 
-	for i, tab in ipairs(tabs) do
-		local btn = createButton(tabBar, tab.name,
-			UDim2.new((i - 1) / 3, 0, 0, 0), UDim2.new(1 / 3, 0, 1, 0),
-			Color3.fromRGB(40, 40, 70))
-		btn.ZIndex = 23
-		btn.MouseButton1Click:Connect(tab.fn)
+	local activeTabColor = Color3.fromRGB(60, 80, 160)
+	local inactiveTabColor = Color3.fromRGB(28, 28, 50)
+	local tabBtns: { [string]: TextButton } = {}
+
+	local function activateTab(key: string)
+		for k, btn in pairs(tabBtns) do
+			btn.BackgroundColor3 = k == key and activeTabColor or inactiveTabColor
+		end
 	end
 
-	showCatsTab()  -- 預設開貓咪 tab
+	for i, tab in ipairs(tabs) do
+		local btn = createButton(tabBar, tab.name,
+			UDim2.new((i - 1) / 3, 1, 0, 1), UDim2.new(1 / 3, -2, 1, -2),
+			inactiveTabColor)
+		btn.TextSize = 14
+		btn.ZIndex = 23
+		local tc = Instance.new("UICorner")
+		tc.CornerRadius = UDim.new(0, 5)
+		tc.Parent = btn
+		tabBtns[tab.key] = btn
+		btn.MouseButton1Click:Connect(function()
+			activateTab(tab.key)
+			tab.fn()
+		end)
+	end
+
+	-- 依 startTab 決定預設分頁
+	local defaultKey = startTab or "cats"
+	local defaultFn = showCatsTab
+	for _, tab in ipairs(tabs) do
+		if tab.key == defaultKey then
+			defaultFn = tab.fn
+			break
+		end
+	end
+	activateTab(defaultKey)
+	defaultFn()
 end
 
 -- ── 裝備面板（獨立快速查看） ──────────────────────────────────────
@@ -440,10 +555,10 @@ function UIManager.openEquipPanel()
 				end)
 			card.LayoutOrder = i
 		else
-			local card = buildCard(scroll, name, desc, "", "→ 商城",
+			local card = buildCard(scroll, name, desc, "", "→ 裝備商城",
 				Color3.fromRGB(60, 120, 200), function()
 					if equipPanel then equipPanel:Destroy() end
-					UIManager.openShopPanel()
+					UIManager.openShopPanel("equip")
 				end)
 			card.LayoutOrder = i
 		end

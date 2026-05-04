@@ -21,6 +21,7 @@
 | NPC 生成 / AI | ✅ | — | 三種 NPC 類型，追逐 + 漫步 |
 | PvP 系統 | ✅ | ✅ | 新增 PvP 面板（列出線上玩家，可點擊發起挑戰） |
 | 地圖 / 場景 | ✅ | — | WorldSetup，3 區圍繞出生點 |
+| 3D 商店攤位 | ✅ | ✅ | 出生點南方 3 棟建築，ProximityPrompt 觸發商城各 tab |
 | HP 顯示 / 自動回復 | ✅ | — | AlwaysOn + 每秒 +1 HP |
 
 ---
@@ -130,6 +131,15 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-04（第三批）
+- **3D 商店攤位**：`WorldSetup.server.lua` 新增三棟建築（商城/裝備/合成），各帶 BillboardGui 大圖示與 ProximityPrompt
+- **ProximityPrompt 接入**：`GameClient.client.lua` 的 `bindShopPrompts()` 掃描 workspace，連接到對應 tab
+- **商城 startTab 參數**：`openShopPanel(startTab)` 支援 `"cats"/"equip"/"synth"`，底部 ⚔ 裝備按鈕改為直接開裝備 tab
+- **卡片視覺升級**：`buildCard` 加入左側識別色條、色塊首字圖示；裝備 tab 固定排序（項圈→帽子→武器）、詳細加成字串
+- **合成進度條**：合成 tab 每張卡片底部顯示碎片進度條（紫色填滿 = 可合成）
+- **Tab 高亮**：當前 tab 背景深藍，切換時更新
+- **修改檔案**：`src/server/WorldSetup.server.lua`、`src/client/UIManager.lua`、`src/client/GameClient.client.lua`、`.cursor/rules/dev-guide.mdc`
 
 ### 2026-05-04（第二批）
 - **貓咪選擇 UI**：`showCatsTab` 已擁有的貓咪新增「切換使用」按鈕，呼叫 `SelectCat:FireServer(catId)`；目前使用中顯示「使用中」標示

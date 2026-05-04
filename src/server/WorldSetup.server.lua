@@ -217,6 +217,145 @@ for i, w in ipairs(wallDefs) do
 	})
 end
 
+-- ── 商店攤位（出生點南方，Z = +40，三棟並排） ───────────────────────
+--   商城（貓咪）：X = -18  黃金色
+--   裝備店：      X =   0  鐵藍色
+--   合成台：      X = +18  紫色
+
+local shopDefs: { {
+	name: string,
+	label: string,
+	emoji: string,
+	actionKey: string,
+	pos: Vector3,
+	bodyColor: BrickColor,
+	roofColor: BrickColor,
+	promptText: string,
+} } = {
+	{
+		name = "ShopBuilding",
+		label = "🛒 貓咪商城",
+		emoji = "🐱",
+		actionKey = "OpenShop",
+		pos = Vector3.new(-18, 0, 40),
+		bodyColor = BrickColor.new("Bright yellow"),
+		roofColor = BrickColor.new("Bright orange"),
+		promptText = "開啟貓咪商城",
+	},
+	{
+		name = "EquipBuilding",
+		label = "⚔ 裝備商店",
+		emoji = "🗡",
+		actionKey = "OpenEquip",
+		pos = Vector3.new(0, 0, 40),
+		bodyColor = BrickColor.new("Bright blue"),
+		roofColor = BrickColor.new("Dark blue"),
+		promptText = "開啟裝備商店",
+	},
+	{
+		name = "SynthBuilding",
+		label = "✨ 合成台",
+		emoji = "🔮",
+		actionKey = "OpenSynth",
+		pos = Vector3.new(18, 0, 40),
+		bodyColor = BrickColor.new("Bright violet"),
+		roofColor = BrickColor.new("Dark indigo"),
+		promptText = "開啟合成台",
+	},
+}
+
+for _, def in ipairs(shopDefs) do
+	local folder = Instance.new("Folder")
+	folder.Name = def.name
+	folder.Parent = workspace
+
+	-- 底座平台
+	local base = makePart({
+		name = "Base",
+		size = Vector3.new(14, 0.5, 12),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 0.25, 0)),
+		color = BrickColor.new("Medium stone grey"),
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+
+	-- 主體牆
+	local body = makePart({
+		name = "Body",
+		size = Vector3.new(12, 6, 10),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 3.5, 0)),
+		color = def.bodyColor,
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+
+	-- 屋頂（棱形）
+	local roof = makePart({
+		name = "Roof",
+		size = Vector3.new(14, 2, 12),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 7.5, 0)),
+		color = def.roofColor,
+		material = Enum.Material.SmoothPlastic,
+		parent = folder,
+	})
+	roof.Shape = Enum.PartType.Block
+
+	-- 門牌（正面半透明深色板）
+	local sign = makePart({
+		name = "Sign",
+		size = Vector3.new(8, 2, 0.3),
+		cframe = CFrame.new(def.pos + Vector3.new(0, 5.5, -5.15)),
+		color = BrickColor.new("Really black"),
+		material = Enum.Material.SmoothPlastic,
+		transparency = 0.15,
+		parent = folder,
+	})
+
+	-- 看板 BillboardGui（懸浮在建築上方）
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ShopBillboard"
+	billboard.Size = UDim2.new(0, 260, 0, 110)
+	billboard.StudsOffset = Vector3.new(0, 6, 0)
+	billboard.AlwaysOnTop = false
+	billboard.Parent = body
+
+	-- 大圖示
+	local emojiLbl = Instance.new("TextLabel")
+	emojiLbl.Size = UDim2.new(1, 0, 0.45, 0)
+	emojiLbl.BackgroundTransparency = 1
+	emojiLbl.Text = def.emoji
+	emojiLbl.TextScaled = true
+	emojiLbl.Font = Enum.Font.GothamBold
+	emojiLbl.TextColor3 = Color3.new(1, 1, 1)
+	emojiLbl.TextStrokeTransparency = 0
+	emojiLbl.Parent = billboard
+
+	-- 名稱文字
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, 0, 0.45, 0)
+	nameLbl.Position = UDim2.new(0, 0, 0.5, 0)
+	nameLbl.BackgroundTransparency = 0.25
+	nameLbl.BackgroundColor3 = Color3.new(0, 0, 0)
+	nameLbl.Text = def.label
+	nameLbl.TextScaled = true
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextColor3 = Color3.new(1, 1, 1)
+	nameLbl.TextStrokeTransparency = 0.4
+	nameLbl.Parent = billboard
+
+	-- ProximityPrompt（放在 Body 上）
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "ShopPrompt"
+	prompt.ObjectText = def.label
+	prompt.ActionText = def.promptText
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.HoldDuration = 0
+	-- 用 Attribute 讓客戶端識別開哪個介面
+	prompt:SetAttribute("ShopAction", def.actionKey)
+	prompt.Parent = body
+end
+
 -- ── 光照 ──────────────────────────────────────────────────────────
 Lighting.Brightness = 2.5
 Lighting.ClockTime = 14

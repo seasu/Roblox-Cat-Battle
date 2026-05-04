@@ -53,7 +53,7 @@ alwaysApply: true
 | 系統 | 後端 | 前端 UI |
 |---|---|---|
 | 玩家資料 / DataStore | ✅ | — |
-| 貓咪選擇 | ✅ | ⚠️ 缺選擇面板 |
+| 貓咪選擇 | ✅ | ✅ |
 | 貓咪外觀（全身替換） | ✅ | — |
 | 等級 / 經驗值 | ✅ | ✅ |
 | 技能系統 | ✅ | ✅ |
@@ -63,9 +63,10 @@ alwaysApply: true
 | 商城（金幣買裝備） | ✅ | ✅ |
 | 寵物合成系統 | ✅ | ✅ |
 | NPC 生成 / AI | ✅ | — |
-| PvP 系統 | ✅ | ⚠️ 缺發起 UI |
+| PvP 系統 | ✅ | ✅ |
 | 地圖 / 場景 | ✅ | — |
 | HP 顯示 / 自動回復 | ✅ | — |
+| 3D 商店攤位（ProximityPrompt） | ✅ | ✅ |
 
 ---
 
@@ -107,15 +108,24 @@ RemoteFunction：`GetPlayerData` / `GetShopCatalog`
 
 ---
 
-## 八、待完成功能（已知 ⚠️ 項目）
+## 八、3D 商店攤位架構
 
-### 8.1 貓咪選擇面板 UI
-- **現狀：** 商城貓咪 tab 只有購買按鈕，已擁有貓咪顯示「✓ 已擁有」但無法切換
-- **需要：** 已擁有的貓咪顯示「切換使用」按鈕，點擊後呼叫 `SelectCat:FireServer(catId)`
-- **相關檔案：** `src/client/UIManager.lua`（`showCatsTab` 函式）
+出生點南方（Z = +40）三棟攤位，由 `WorldSetup.server.lua` 建立：
 
-### 8.2 PvP 發起挑戰 UI
-- **現狀：** 後端 PvPManager 完整，`PvPInvite` 邀請通知已接收，但玩家無法主動發起
-- **需要：** 在其他玩家附近時顯示「發起 PvP」按鈕，或在主 HUD 提供 PvP 入口
-- **相關事件：** `RequestPvP:FireServer(targetUserId)`
-- **相關檔案：** `src/client/UIManager.lua`、`src/client/GameClient.client.lua`
+| 建築名稱 | Attribute `ShopAction` | 開啟分頁 |
+|---|---|---|
+| ShopBuilding（黃金色） | `OpenShop` | 商城貓咪 tab |
+| EquipBuilding（藍色） | `OpenEquip` | 商城裝備 tab |
+| SynthBuilding（紫色） | `OpenSynth` | 商城合成 tab |
+
+- `ProximityPrompt` 掛在各建築的 Body 上，Name = `ShopPrompt`，MaxActivationDistance = 12
+- `GameClient.client.lua` 的 `bindShopPrompts()` 掃描 workspace，連接到 `UIManager.openShopPanel(startTab)`
+- `UIManager.openShopPanel(startTab)` 支援 `"cats"` / `"equip"` / `"synth"` 三種參數
+
+## 九、卡片視覺設計
+
+商城面板卡片（`buildCard`）支援以下視覺元素：
+- **左側色條**（5px）：以 `ICON_COLORS[iconKey]` 著色
+- **左側色塊**（42×74%）：半透明識別色塊，顯示名稱首字大寫
+- **合成進度條**：傳入 `fragData = {current, max}` 時，在卡片底部顯示碎片進度條
+- Tab 按鈕支援高亮（當前 tab 深藍色，其餘深色）
