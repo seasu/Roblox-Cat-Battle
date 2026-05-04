@@ -2,11 +2,11 @@
 
 ## 📍 1. 當前會話快照 (Context Snapshot)
 > **STATUS:** 任務進行中 - 已實作版本管理。
-- **Version:** `v0.1.1`
+- **Version:** `v0.1.2`
 - **Last Sync:** 2026-05-04
 - **Battery Level:** 🟢 [電量充足]
 - **Project Goal:** 打造一款高品質的 Roblox 貓咪戰鬥 RPG 遊戲，具備完整的數值系統、裝備系統與 PvP/PvE 玩法。
-- **Current Task:** 已將 PMAT 方法論套用到此專案，建立 `AGENT.md` 與 `SKILLS/` 目錄。
+- **Current Task:** 已修復攻擊動畫被預設系統覆蓋的問題，改用 RunService 強制同步。
 - **Next Step:** 根據 `PRD.md` 與 `GAME_DESIGN.md` 開始開發核心系統。
 
 ---

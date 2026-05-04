@@ -144,6 +144,10 @@
 
 ## 變更日誌
 
+### 2026-05-04（第十批）
+- **動畫系統核心改版**：將 `CombatClient.lua` 的揮手動畫從 `task.spawn` 改為 `RunService.RenderStepped` 強制同步。這解決了手動旋轉 Motor6D 被 Roblox 預設 Animate 腳本每幀重設（覆蓋）的問題。
+- **版本號升級**：全專案同步至 `v0.1.2`。
+
 ### 2026-05-04（第九批）
 - **PMAT 框架遷移**：建立 `AGENT.md` (專案大腦) 與 `SKILLS/` 目錄，將部署邏輯模組化。
 - **NPC 重生修正**：在 `NPCManager.spawnNPC` 加入地面偵測 (Raycast)，解決玩家站立在重生點時 NPC 會飄在半空中的問題。

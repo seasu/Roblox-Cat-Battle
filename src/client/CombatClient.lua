@@ -475,8 +475,7 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	return nil
 end
 
--- 揮手動畫：motor 向前轉 angle 弧度，再彈回
--- swingAngle < 0 = 向前揮（往 -Z 方向轉）
+-- 揮手動畫：使用 RunService 確保在每一幀覆蓋預設動畫系統，避免揮手被「吃掉」
 local swingActive = false
 local function playSwingAnimation(swingAngle: number, duration: number)
 	if swingActive then return end
@@ -486,45 +485,40 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	if not motor then return end
 
 	swingActive = true
-	local original = motor.Transform
+	local startTime = os.clock()
+	
+	-- 在動畫期間，每一幀都強制設定 Transform
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		local now = os.clock()
+		local elapsed = now - startTime
+		local t = elapsed / duration
 
-	-- 向前揮出
-	local target = CFrame.Angles(swingAngle, 0, 0.2) -- 增加一點側面傾斜讓動作更自然
-	local steps = math.ceil(duration / (1/60))
-	local perStep = 1 / steps
-
-	-- 用 task.spawn 做逐幀插值（Motor6D.Transform 不支援 TweenService）
-	task.spawn(function()
-		-- 揮出階段（前 30% - 加速揮出）
-		local outSteps = math.ceil(steps * 0.3)
-		for i = 1, outSteps do
-			if not char.Parent then break end
-			local t = i / outSteps
-			-- 使用平滑插值（EaseIn）
-			local alpha = t * t 
-			motor.Transform = original:Lerp(target, alpha)
-			task.wait(1/60)
+		if t >= 1 or not char.Parent or not motor.Parent then
+			motor.Transform = CFrame.new() -- 回歸原位
+			connection:Disconnect()
+			swingActive = false
+			return
 		end
-		motor.Transform = target
 
-		-- 停頓一瞬間（打擊感）
-		task.wait(0.05)
-
-		-- 彈回階段（後 70% - 緩慢收回）
-		local backSteps = steps - outSteps
-		for i = 1, backSteps do
-			if not char.Parent then break end
-			local t = i / backSteps
-			-- Bounce 效果：超過終點再回來
-			local bounce = math.sin(t * math.pi)
-			local extra = CFrame.Angles(swingAngle * 0.1 * bounce, 0, 0)
-			-- 使用 EaseOut 插值收回
-			local alpha = 1 - (1 - t) * (1 - t)
-			motor.Transform = target:Lerp(original, alpha) * extra
-			task.wait(1/60)
+		-- 動作曲線
+		local currentCF = CFrame.new()
+		if t < 0.3 then
+			-- 快速揮出 (0% -> 30%)
+			local alpha = (t / 0.3) ^ 2
+			currentCF = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
+		elseif t < 0.35 then
+			-- 停頓打擊感 (30% -> 35%)
+			currentCF = CFrame.Angles(swingAngle, 0, 0.2)
+		else
+			-- 緩慢收回 (35% -> 100%)
+			local alpha = (t - 0.35) / 0.65
+			local easeOut = 1 - (1 - alpha) ^ 2
+			local bounce = math.sin(alpha * math.pi) * 0.1
+			currentCF = CFrame.Angles(swingAngle * (1 - easeOut) + (swingAngle * bounce), 0, 0.2 * (1 - easeOut))
 		end
-		motor.Transform = original
-		swingActive = false
+		
+		motor.Transform = currentCF
 	end)
 end
 
@@ -547,30 +541,25 @@ local function playBothArmsSwing(angle: number, duration: number)
 	local mR = getArmMotor(char, "Right")
 	local mL = getArmMotor(char, "Left")
 
-	local function swingMotor(motor: Motor6D)
-		local orig = motor.Transform
-		local tgt  = CFrame.Angles(angle, 0, 0)
-		local steps = math.ceil(duration / (1/60))
-		task.spawn(function()
-			local outS = math.ceil(steps * 0.4)
-			for i = 1, outS do
-				if not char.Parent then break end
-				motor.Transform = orig:Lerp(tgt, i / outS)
-				task.wait(1/60)
-			end
-			motor.Transform = tgt
-			local backS = steps - outS
-			for i = 1, backS do
-				if not char.Parent then break end
-				motor.Transform = tgt:Lerp(orig, i / backS)
-				task.wait(1/60)
-			end
-			motor.Transform = orig
-		end)
-	end
+	local startTime = os.clock()
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = (os.clock() - startTime) / duration
+		if t >= 1 or not char.Parent then
+			if mR then mR.Transform = CFrame.new() end
+			if mL then mL.Transform = CFrame.new() end
+			connection:Disconnect()
+			return
+		end
 
-	if mR then swingMotor(mR) end
-	if mL then swingMotor(mL) end
+		local alpha = 1
+		if t < 0.4 then alpha = (t / 0.4) ^ 2
+		else alpha = 1 - ((t - 0.4) / 0.6) ^ 2 end
+		
+		local cf = CFrame.Angles(angle * alpha, 0, 0)
+		if mR then mR.Transform = cf end
+		if mL then mL.Transform = cf end
+	end)
 end
 
 local AOE_SKILLS = {
