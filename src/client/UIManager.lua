@@ -174,33 +174,45 @@ function UIManager.init(playerData: any)
 	end
 end
 
--- ── 底部選單按鈕 ─────────────────────────────────────────────────
+-- ── 右上角選單按鈕（直排，不擋方向鍵/跳躍） ─────────────────────
 
 function UIManager.buildMenuButtons()
-	-- 商城按鈕（右下）
-	local shopBtn = createButton(screenGui, "🛒 商城",
-		UDim2.new(0.85, 0, 0.88, 0),
-		UDim2.new(0.13, 0, 0.055, 0),
-		Color3.fromRGB(180, 100, 20))
-	shopBtn.MouseButton1Click:Connect(function()
+	-- 按鈕規格：右上角直排，每個按鈕 11% 寬、5% 高，間距 1%
+	-- X 起點 0.88（距右邊 1%），Y 從 0.01 往下排列
+	local BTN_X    = 0.88
+	local BTN_W    = 0.115
+	local BTN_H    = 0.052
+	local BTN_GAP  = 0.008
+	local startY   = 0.01
+
+	local function makeBtn(label, yPos, color, fn)
+		local btn = createButton(screenGui, label,
+			UDim2.new(BTN_X, 0, yPos, 0),
+			UDim2.new(BTN_W, 0, BTN_H, 0),
+			color)
+		btn.TextSize = 13
+		btn.ZIndex = 5
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = btn
+		-- 輕微半透明背景讓按鈕不過於搶眼
+		btn.BackgroundTransparency = 0.15
+		btn.MouseButton1Click:Connect(fn)
+		return btn
+	end
+
+	local y = startY
+	makeBtn("🛒 商城", y, Color3.fromRGB(170, 90, 15), function()
 		UIManager.openShopPanel("cats")
 	end)
 
-	-- 背包按鈕（左下）— 管理已擁有裝備、穿戴/卸下
-	local equipBtn = createButton(screenGui, "🎒 背包",
-		UDim2.new(0.01, 0, 0.88, 0),
-		UDim2.new(0.13, 0, 0.055, 0),
-		Color3.fromRGB(60, 80, 160))
-	equipBtn.MouseButton1Click:Connect(function()
+	y = y + BTN_H + BTN_GAP
+	makeBtn("🎒 背包", y, Color3.fromRGB(50, 75, 155), function()
 		UIManager.openInventoryPanel()
 	end)
 
-	-- PvP 按鈕（中下）
-	local pvpBtn = createButton(screenGui, "⚔ PvP",
-		UDim2.new(0.43, 0, 0.88, 0),
-		UDim2.new(0.13, 0, 0.055, 0),
-		Color3.fromRGB(160, 40, 40))
-	pvpBtn.MouseButton1Click:Connect(function()
+	y = y + BTN_H + BTN_GAP
+	makeBtn("⚔ PvP", y, Color3.fromRGB(150, 35, 35), function()
 		UIManager.openPvPPanel()
 	end)
 end
