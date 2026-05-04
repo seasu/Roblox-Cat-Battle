@@ -296,13 +296,24 @@ local SKILL_VFX: { [string]: (pos: Vector3) -> () } = {
 }
 
 -- ── 主特效入口 ────────────────────────────────────────────────────
+-- VFX cooldown：BasicSwipe 最小間隔 0.12 秒，避免連打時粒子堆疊暈開
+local lastVfxTime: { [string]: number } = {}
+local VFX_COOLDOWN: { [string]: number } = {
+	BasicSwipe = 0.12,
+}
 
 local function spawnAttackVFX(skillId: string, hitPos: Vector3)
+	local now = os.clock()
+	local cd = VFX_COOLDOWN[skillId]
+	if cd then
+		local last = lastVfxTime[skillId] or 0
+		if now - last < cd then return end
+		lastVfxTime[skillId] = now
+	end
+
 	local weaponId = CombatClient.currentWeapon
-	-- 武器底層特效
 	local weaponFn = (weaponId and WEAPON_VFX[weaponId]) or defaultWeaponVFX
 	weaponFn(hitPos)
-	-- 技能疊加特效
 	local skillFn = SKILL_VFX[skillId]
 	if skillFn then
 		skillFn(hitPos)
@@ -312,6 +323,7 @@ end
 -- 快捷鍵對應（第 2–6 槽）
 
 local function playOneShotSound(soundId: string, position: Vector3?, volume: number?)
+	local ok, err = pcall(function()
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.Volume = volume or 0.8
@@ -331,6 +343,10 @@ local function playOneShotSound(soundId: string, position: Vector3?, volume: num
 		sound.Parent = workspace
 		sound:Play()
 		game:GetService("Debris"):AddItem(sound, 2)
+	end
+	end)
+	if not ok then
+		-- 音效載入失敗時靜默忽略（Asset 類型不符或 ID 無效）
 	end
 end
 
@@ -367,6 +383,9 @@ local function getMouseTarget(overridePos: Vector3?): (string?, Vector3?)
 	return nil, result.Position
 end
 
+-- Forward declaration：triggerSwingForSkill 定義在後段，需先宣告避免 nil 呼叫
+local triggerSwingForSkill: (skillId: string) -> ()
+
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	local char = localPlayer.Character
 	if not char then return end
@@ -383,7 +402,7 @@ function CombatClient.attemptBasicAttack(inputPos: Vector3?)
 	end
 	
 	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://12222225", vfxPos, 0.6)
+	playOneShotSound("rbxassetid://9120386436", vfxPos, 0.7)  -- 爪擊聲
 	triggerSwingForSkill("BasicSwipe")
 end
 
@@ -427,7 +446,7 @@ function CombatClient.showDamageNumber(position: Vector3, damage: number | strin
 	label.TextSize = isCrit and 28 or 20
 	label.TextColor3 = isCrit and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
 	label.TextStrokeTransparency = 0.3
-	playOneShotSound("rbxassetid://5419098675", position, isCrit and 1 or 0.8)
+	playOneShotSound("rbxassetid://3735379497", position, isCrit and 1 or 0.8)  -- 打擊音效
 
 	-- 向上飄移並淡出
 	local tweenPart = TweenService:Create(part,
@@ -588,20 +607,22 @@ local function setupCatWalkTilt()
 			rootMotor.Transform = rootMotor.Transform:Lerp(CFrame.Angles(targetTilt, 0, 0), 0.13)
 
 			-- ── 四肢步態：對角步態（右前＋左後同相，左前＋右後反相）
-			-- 攻擊揮手動畫在後連接的 RenderStepped 中執行，自然覆蓋此處設定值
+			-- 攻擊揮手動畫使用 swingActive 旗標互斥，不再依賴 RenderStepped 順序
 			local swingAmp  = isMoving and 1.0 or 0.0
 			local lerpSpeed = isMoving and 1.0 or 0.08
-			local sR = math.sin(phase) * swingAmp        -- 右前相位
-			local sL = math.sin(phase + math.pi) * swingAmp  -- 左前相位（反相）
+			local sR = math.sin(phase) * swingAmp
+			local sL = math.sin(phase + math.pi) * swingAmp
 
-			-- 前肢（手臂）：前後大幅擺動模擬前爪觸地蹬離
-			if armR then
-				armR.Transform = armR.Transform:Lerp(CFrame.Angles(-sR * 1.15, 0, 0), lerpSpeed)
+			-- 前肢（手臂）：攻擊期間讓出控制權
+			if not swingActive then
+				if armR then
+					armR.Transform = armR.Transform:Lerp(CFrame.Angles(-sR * 1.15, 0, 0), lerpSpeed)
+				end
+				if armL then
+					armL.Transform = armL.Transform:Lerp(CFrame.Angles(-sL * 1.15, 0, 0), lerpSpeed)
+				end
 			end
-			if armL then
-				armL.Transform = armL.Transform:Lerp(CFrame.Angles(-sL * 1.15, 0, 0), lerpSpeed)
-			end
-			-- 後肢（腿）：與對側前肢反相，幅度略小
+			-- 後肢（腿）：始終由步態控制
 			if legR then
 				legR.Transform = legR.Transform:Lerp(CFrame.Angles(sL * 0.65, 0, 0), lerpSpeed)
 			end
@@ -615,33 +636,37 @@ local function setupCatWalkTilt()
 	localPlayer.CharacterAdded:Connect(onCharacter)
 end
 
--- 揮手動畫：使用 RenderStepped 並在每一幀強制「覆寫」Transform。
+-- 揮手動畫：連打時強制重置，不累積 RenderStepped 連接
 local swingActive = false
+local swingConnection: RBXScriptConnection? = nil
+
 local function playSwingAnimation(swingAngle: number, duration: number)
-	if swingActive then return end
 	local char = localPlayer.Character
 	if not char then return end
 	local motor = getArmMotor(char, "Right")
 	if not motor then return end
 
+	-- 若有舊的揮手動畫還在跑，強制中斷再重新開始
+	if swingConnection then
+		swingConnection:Disconnect()
+		swingConnection = nil
+	end
+
 	swingActive = true
-	_G.catSwingActive = true  -- 通知 CatLocomotion 讓出手臂
 	local startTime = os.clock()
 
-	local connection
-	connection = RunService.RenderStepped:Connect(function()
+	swingConnection = RunService.RenderStepped:Connect(function()
 		local elapsed = os.clock() - startTime
 		local t = elapsed / duration
 
 		if t >= 1 or not char.Parent or not motor.Parent then
 			motor.Transform = CFrame.new()
-			connection:Disconnect()
+			if swingConnection then swingConnection:Disconnect(); swingConnection = nil end
 			swingActive = false
-			_G.catSwingActive = false  -- 歸還手臂控制給 CatLocomotion
 			return
 		end
 
-		-- 動作曲線：快速揮出 → 停頓打擊感 → 平滑收回
+		-- 動作曲線：快速揮出（前 20%） → 停頓打擊感（20-30%） → 平滑收回（30-100%）
 		local alpha = 0
 		if t < 0.2 then
 			alpha = (t / 0.2) ^ 2
@@ -701,7 +726,7 @@ local AOE_SKILLS = {
 	PetalSlash = true, ThunderPounce = true,
 }
 
-local function triggerSwingForSkill(skillId: string)
+triggerSwingForSkill = function(skillId: string)
 	local params = SKILL_SWING[skillId]
 	if AOE_SKILLS[skillId] then
 		playBothArmsSwing(params and params.angle or -1.5, params and params.duration or 0.32)
@@ -771,7 +796,7 @@ local function playDropCoins(pos: Vector3, amount: number)
 	end)
 
 	-- 金幣音效（輕盈的叮叮聲）
-	playOneShotSound("rbxassetid://4614471819", pos, 0.9)
+	playOneShotSound("rbxassetid://9120386436", pos, 0.9)  -- 金幣音效（爽脆）
 end
 
 -- 碎片掉落：彩色晶體從中心爆散，帶閃亮光暈
@@ -863,7 +888,7 @@ local function playDropFragment(pos: Vector3, catId: string)
 	end)
 
 	-- 碎片音效（神秘晶體聲）
-	playOneShotSound("rbxassetid://4612355301", pos, 1.0)
+	playOneShotSound("rbxassetid://3735379497", pos, 1.0)  -- 碎片音效
 end
 
 -- 處理 NPCDrops 事件
