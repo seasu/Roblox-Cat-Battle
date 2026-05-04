@@ -297,20 +297,7 @@ local SKILL_VFX: { [string]: (pos: Vector3) -> () } = {
 
 -- ── 主特效入口 ────────────────────────────────────────────────────
 -- VFX cooldown：BasicSwipe 最小間隔 0.12 秒，避免連打時粒子堆疊暈開
-local lastVfxTime: { [string]: number } = {}
-local VFX_COOLDOWN: { [string]: number } = {
-	BasicSwipe = 0.12,
-}
-
 local function spawnAttackVFX(skillId: string, hitPos: Vector3)
-	local now = os.clock()
-	local cd = VFX_COOLDOWN[skillId]
-	if cd then
-		local last = lastVfxTime[skillId] or 0
-		if now - last < cd then return end
-		lastVfxTime[skillId] = now
-	end
-
 	local weaponId = CombatClient.currentWeapon
 	local weaponFn = (weaponId and WEAPON_VFX[weaponId]) or defaultWeaponVFX
 	weaponFn(hitPos)
@@ -386,23 +373,29 @@ end
 -- Forward declaration：triggerSwingForSkill 定義在後段，需先宣告避免 nil 呼叫
 local triggerSwingForSkill: (skillId: string) -> ()
 
+-- 基礎攻擊整體 cooldown（伺服器驗證約 0.3 秒一次）
+local lastBasicAttackTime = 0
+local BASIC_ATTACK_CD = 0.30  -- 秒
+
 function CombatClient.attemptBasicAttack(inputPos: Vector3?)
+	local now = os.clock()
+	if now - lastBasicAttackTime < BASIC_ATTACK_CD then return end
+	lastBasicAttackTime = now
+
 	local char = localPlayer.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
 	local instanceId, hitPos = getMouseTarget(inputPos)
-	
-	-- 無論是否打中 NPC，都播放揮手動作與聲音，提供操作回饋
 	local vfxPos = hitPos or (root.Position + root.CFrame.LookVector * 3)
-	
+
 	if instanceId then
 		useSkillEvent:FireServer("BasicSwipe", instanceId)
 	end
-	
+
 	spawnAttackVFX("BasicSwipe", vfxPos)
-	playOneShotSound("rbxassetid://131961136", vfxPos, 0.7)  -- 爪擊聲
+	playOneShotSound("rbxassetid://131961136", vfxPos, 0.7)
 	triggerSwingForSkill("BasicSwipe")
 end
 
