@@ -625,33 +625,33 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	if not motor then return end
 
 	swingActive = true
+	_G.catSwingActive = true  -- 通知 CatLocomotion 讓出手臂
 	local startTime = os.clock()
-	
+
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		local elapsed = os.clock() - startTime
 		local t = elapsed / duration
 
 		if t >= 1 or not char.Parent or not motor.Parent then
-			motor.Transform = CFrame.new() -- 回歸原位
+			motor.Transform = CFrame.new()
 			connection:Disconnect()
 			swingActive = false
+			_G.catSwingActive = false  -- 歸還手臂控制給 CatLocomotion
 			return
 		end
 
-		-- 動作曲線 (更加激進的揮動)
+		-- 動作曲線：快速揮出 → 停頓打擊感 → 平滑收回
 		local alpha = 0
 		if t < 0.2 then
-			alpha = (t / 0.2) ^ 2 -- 快速揮出
+			alpha = (t / 0.2) ^ 2
 		elseif t < 0.3 then
-			alpha = 1 -- 停頓打擊感
+			alpha = 1
 		else
 			local backT = (t - 0.3) / 0.7
-			alpha = math.cos(backT * math.pi / 2) -- 平滑收回
+			alpha = math.cos(backT * math.pi / 2)
 		end
 
-		-- 強制覆寫。注意：若有 setupCatWalkTilt，這會與其競爭 Transform。
-		-- 但因為這裡是揮手動畫，通常只影響手臂，而 CatWalkTilt 影響軀幹，所以不衝突。
 		motor.Transform = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
 	end)
 end
