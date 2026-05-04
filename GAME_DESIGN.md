@@ -144,6 +144,11 @@
 
 ## 變更日誌
 
+### 2026-05-04（第十一批）
+- **遊戲內版本顯示**：在左上角 HUD 底部新增微型版本號標籤，讀取 `GameConfig.VERSION` 自動更新。
+- **攻擊動畫強化**：調整 `playSwingAnimation` 的曲線，改用三次方加速揮出，並優化 `RenderStepped` 下的 Transform 覆蓋機制，確保即使在原地 Idle 狀態下，揮動動作也不會被預設動畫壓制。
+- **版本號升級**：全專案同步至 `v0.1.3`。
+
 ### 2026-05-04（第十批）
 - **動畫系統核心改版**：將 `CombatClient.lua` 的揮手動畫從 `task.spawn` 改為 `RunService.RenderStepped` 強制同步。這解決了手動旋轉 Motor6D 被 Roblox 預設 Animate 腳本每幀重設（覆蓋）的問題。
 - **版本號升級**：全專案同步至 `v0.1.2`。

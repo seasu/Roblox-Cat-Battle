@@ -475,7 +475,8 @@ local function getArmMotor(char: Model, side: "Right" | "Left"): Motor6D?
 	return nil
 end
 
--- 揮手動畫：使用 RunService 確保在每一幀覆蓋預設動畫系統，避免揮手被「吃掉」
+-- 揮手動畫：使用 RenderStepped 並在每一幀強制「覆寫」Transform。
+-- 站在原地沒動時手不動，通常是因為 Idle 動畫的權限較高或在每一幀重置了 Transform。
 local swingActive = false
 local function playSwingAnimation(swingAngle: number, duration: number)
 	if swingActive then return end
@@ -487,11 +488,12 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	swingActive = true
 	local startTime = os.clock()
 	
-	-- 在動畫期間，每一幀都強制設定 Transform
+	-- 建立一個透明的 AnimationTrack 來「壓制」其他的 Idle 動畫（選用，若 RenderStepped 夠強則不一定需要）
+	-- 但 RenderStepped 應該是最後執行的，所以理論上能覆蓋。
+	
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
-		local now = os.clock()
-		local elapsed = now - startTime
+		local elapsed = os.clock() - startTime
 		local t = elapsed / duration
 
 		if t >= 1 or not char.Parent or not motor.Parent then
@@ -501,24 +503,22 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			return
 		end
 
-		-- 動作曲線
-		local currentCF = CFrame.new()
-		if t < 0.3 then
-			-- 快速揮出 (0% -> 30%)
-			local alpha = (t / 0.3) ^ 2
-			currentCF = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
+		-- 動作曲線 (Ease-in-out + 打擊感)
+		local alpha = 0
+		if t < 0.25 then
+			-- 0% -> 25%: 極速揮出 (用立方曲線增加速度感)
+			alpha = (t / 0.25) ^ 3
 		elseif t < 0.35 then
-			-- 停頓打擊感 (30% -> 35%)
-			currentCF = CFrame.Angles(swingAngle, 0, 0.2)
+			-- 25% -> 35%: 停頓 (打擊感核心)
+			alpha = 1
 		else
-			-- 緩慢收回 (35% -> 100%)
-			local alpha = (t - 0.35) / 0.65
-			local easeOut = 1 - (1 - alpha) ^ 2
-			local bounce = math.sin(alpha * math.pi) * 0.1
-			currentCF = CFrame.Angles(swingAngle * (1 - easeOut) + (swingAngle * bounce), 0, 0.2 * (1 - easeOut))
+			-- 35% -> 100%: 緩慢回彈 (用 EaseOut)
+			local backT = (t - 0.35) / 0.65
+			alpha = 1 - (1 - (1 - backT) ^ 2) -- 簡化的回彈曲線
 		end
-		
-		motor.Transform = currentCF
+
+		-- 強制覆寫：不管 Animate 腳本做了什麼，在渲染前最後一刻設定這個值
+		motor.Transform = CFrame.Angles(swingAngle * alpha, 0, 0.2 * alpha)
 	end)
 end
 

@@ -133,6 +133,21 @@ function UIManager.init(playerData: any)
 	catLabel.ZIndex = 3
 	catLabel.Parent = hudBg
 
+	-- 版本號：放在 HUD 底部或右下角
+	local versionLabel = Instance.new("TextLabel")
+	versionLabel.Text = require(ReplicatedStorage.Shared.GameConfig).VERSION
+	versionLabel.Position = UDim2.new(1, -5, 1, -2)
+	versionLabel.Size = UDim2.new(0, 50, 0, 15)
+	versionLabel.AnchorPoint = Vector2.new(1, 1)
+	versionLabel.BackgroundTransparency = 1
+	versionLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+	versionLabel.TextStrokeTransparency = 0.8
+	versionLabel.Font = Enum.Font.Gotham
+	versionLabel.TextSize = 10
+	versionLabel.TextXAlignment = Enum.TextXAlignment.Right
+	versionLabel.ZIndex = 3
+	versionLabel.Parent = hudBg
+
 	-- ── XP 條與等級（level label 移至 Y=0.905 避開技能列 Y=0.82~0.89）──
 	local xpBg = createFrame(screenGui,
 		UDim2.new(0.3, 0, 0.945, 0),
