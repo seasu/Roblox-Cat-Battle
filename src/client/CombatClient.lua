@@ -589,11 +589,18 @@ local function endSwing()
 	swingActive = false
 end
 
--- ── 貓咪走路姿勢優化 (擬人步態) ──────────────────────────────────────
--- 透過旋轉 RootJoint 與四肢擺動，維持擬人化貓咪的站姿移動節奏
+-- ── 貓咪姿勢系統 ─────────────────────────────────────────────────
+-- 待機：「鞋貓劍客」英雄站姿（右爪前伸、左臂側展、輕微呼吸）
+-- 行走：C0 平滑還原至預設，讓 Roblox Animate 腳本正常接管步行動畫
+-- 重點：修改 C0（不是 Transform）；Animator 只寫 Transform，兩者不衝突
 local function setupCatWalkTilt()
 	local currentConnection: RBXScriptConnection? = nil
-	local phase = 0
+
+	-- 鞋貓劍客待機：各關節 C0 偏移目標值
+	local IDLE_ARM_R = CFrame.Angles(-0.30, 0.14, 0.20)   -- 右爪英雄前伸
+	local IDLE_ARM_L = CFrame.Angles( 0.10, -0.12, -0.18) -- 左臂自然側展
+	local IDLE_LEG_R = CFrame.Angles(-0.14, 0, 0.06)      -- 右腿微前（重心腿）
+	local IDLE_LEG_L = CFrame.Angles( 0.10, 0, -0.04)     -- 左腿微後（支撐腿）
 
 	local function onCharacter(char: Model)
 		if currentConnection then currentConnection:Disconnect() end
@@ -604,52 +611,52 @@ local function setupCatWalkTilt()
 		local armL: Motor6D? = nil
 		local legR: Motor6D? = nil
 		local legL: Motor6D? = nil
+		-- 各關節的原始 C0（未受 Animator 影響的骨骼綁定值）
+		local armRC0def = CFrame.new()
+		local armLC0def = CFrame.new()
+		local legRC0def = CFrame.new()
+		local legLC0def = CFrame.new()
 
-		local function findMotors()
-			rootMotor = nil; armR = nil; armL = nil; legR = nil; legL = nil
+		-- 延遲 0.2s 等骨骼完全載入後再抓取關節
+		task.spawn(function()
+			task.wait(0.20)
 			for _, m in ipairs(char:GetDescendants()) do
 				if not m:IsA("Motor6D") then continue end
 				local mn  = m.Name
 				local p0n = m.Part0 and m.Part0.Name or ""
 				local p1n = m.Part1 and m.Part1.Name or ""
-				-- 軀幹根關節
+
 				if p0n == "HumanoidRootPart" then
 					rootMotor = m
 				end
-				-- 右肩（前右腿）
-				if not armR and string.find(mn, "Right") and string.find(mn, "Shoulder") then
-					armR = m
-				elseif not armR and string.find(p1n, "Right") and
-					(string.find(p1n, "UpperArm") or p1n == "Right Arm") then
-					armR = m
+				if not armR and (
+					(string.find(mn, "Right") and string.find(mn, "Shoulder")) or
+					(string.find(p1n, "Right") and (string.find(p1n, "UpperArm") or p1n == "Right Arm"))
+				) then
+					armR = m; armRC0def = m.C0
 				end
-				-- 左肩（前左腿）
-				if not armL and string.find(mn, "Left") and string.find(mn, "Shoulder") then
-					armL = m
-				elseif not armL and string.find(p1n, "Left") and
-					(string.find(p1n, "UpperArm") or p1n == "Left Arm") then
-					armL = m
+				if not armL and (
+					(string.find(mn, "Left") and string.find(mn, "Shoulder")) or
+					(string.find(p1n, "Left") and (string.find(p1n, "UpperArm") or p1n == "Left Arm"))
+				) then
+					armL = m; armLC0def = m.C0
 				end
-				-- 右髖（後右腿）
-				if not legR and string.find(mn, "Right") and string.find(mn, "Hip") then
-					legR = m
-				elseif not legR and string.find(p1n, "Right") and
-					(string.find(p1n, "UpperLeg") or p1n == "Right Leg") then
-					legR = m
+				if not legR and (
+					(string.find(mn, "Right") and string.find(mn, "Hip")) or
+					(string.find(p1n, "Right") and (string.find(p1n, "UpperLeg") or p1n == "Right Leg"))
+				) then
+					legR = m; legRC0def = m.C0
 				end
-				-- 左髖（後左腿）
-				if not legL and string.find(mn, "Left") and string.find(mn, "Hip") then
-					legL = m
-				elseif not legL and string.find(p1n, "Left") and
-					(string.find(p1n, "UpperLeg") or p1n == "Left Leg") then
-					legL = m
+				if not legL and (
+					(string.find(mn, "Left") and string.find(mn, "Hip")) or
+					(string.find(p1n, "Left") and (string.find(p1n, "UpperLeg") or p1n == "Left Leg"))
+				) then
+					legL = m; legLC0def = m.C0
 				end
 			end
-		end
+		end)
 
-		findMotors()
 		local lastTime = os.clock()
-		-- 蹲伏角度目前值（用於平滑過渡）
 		local currentTilt = 0
 
 		currentConnection = RunService.RenderStepped:Connect(function()
@@ -657,74 +664,42 @@ local function setupCatWalkTilt()
 				if currentConnection then currentConnection:Disconnect() end
 				return
 			end
-			-- 若 motor 消失（換貓/重生）重新尋找
-			if not rootMotor or not rootMotor.Parent then
-				findMotors()
-			end
+			if not rootMotor or not rootMotor.Parent then return end
 
 			local now = os.clock()
 			local dt  = math.min(now - lastTime, 0.05)
-			lastTime   = now
+			lastTime  = now
 
 			local isMoving = hum.MoveDirection.Magnitude > 0.1
-			local speed    = Vector3.new(
-				char:FindFirstChild("HumanoidRootPart") and
-				(char:FindFirstChild("HumanoidRootPart") :: BasePart).AssemblyLinearVelocity.X or 0,
-				0,
-				char:FindFirstChild("HumanoidRootPart") and
-				(char:FindFirstChild("HumanoidRootPart") :: BasePart).AssemblyLinearVelocity.Z or 0
-			).Magnitude
 
-			-- 步態頻率：速度越快步頻越高
+			-- 軀幹傾斜：移動時微前傾（維持擬人感），靜止時微後仰（英雄感）
+			local tiltTarget = isMoving and math.rad(5) or math.rad(-2)
+			currentTilt = currentTilt + (tiltTarget - currentTilt) * math.min(dt * 16, 1)
+			rootMotor.Transform = CFrame.Angles(currentTilt, 0, 0)
+
 			if isMoving then
-				local freq = 5.5 + speed * 0.18  -- 靜走 ~5.5Hz，全速跑約 7-8Hz
-				phase = (phase + dt * freq) % (math.pi * 2)
+				-- 行走：C0 平滑還原至預設，讓 Animate 腳本完整接管步行動畫
+				if armR then armR.C0 = armR.C0:Lerp(armRC0def, 0.10) end
+				if armL then armL.C0 = armL.C0:Lerp(armLC0def, 0.10) end
+				if legR then legR.C0 = legR.C0:Lerp(legRC0def, 0.10) end
+				if legL then legL.C0 = legL.C0:Lerp(legLC0def, 0.10) end
 			else
-				-- 靜止時相位緩慢歸零（讓四肢回到蹲伏待機位）
-				phase = phase * (1 - math.min(dt * 6, 1))
-			end
-
-			-- ── 軀幹姿態（擬人貓）───────────────────────────────────
-			-- 回到直立擬人姿勢：移動時微微前傾，待機近直立
-			local targetTilt = isMoving and math.rad(6) or math.rad(2)
-			-- 快速平滑收斂（Lerp 係數 0.25，約 4 幀到位）
-			currentTilt = currentTilt + (targetTilt - currentTilt) * math.min(dt * 18, 1)
-			if rootMotor then
-				rootMotor.Transform = CFrame.Angles(currentTilt, 0, 0)
-			end
-
-			-- ── 四肢對角步態 ──────────────────────────────────────────
-			-- 移動時全幅擺動；靜止時平滑歸零（前肢微前傾待機）
-			local moveBlend  = math.min(speed / 5, 1)  -- 0(靜)→1(全速)
-			local limbLerp   = isMoving and 0.35 or 0.12  -- 移動時快速跟上，靜止慢速歸位
-
-			local sR  = math.sin(phase) * moveBlend         -- 右前相位
-			local sL  = math.sin(phase + math.pi) * moveBlend  -- 左前反相
-
-			-- 前肢（手臂）：擬人走路擺手，攻擊時讓出
-			if not swingActive then
+				-- 待機：「鞋貓劍客」英雄站姿 + 呼吸微動
+				local breathe = math.sin(now * 1.35) * 0.028
 				if armR then
-					local targetR = isMoving and CFrame.Angles(-sR * 0.95, 0, 0)
-						or CFrame.Angles(0.06, 0, 0)
-					armR.Transform = armR.Transform:Lerp(targetR, limbLerp)
+					armR.C0 = armR.C0:Lerp(
+						armRC0def * (IDLE_ARM_R * CFrame.Angles(breathe, 0, 0)), 0.055)
 				end
 				if armL then
-					local targetL = isMoving and CFrame.Angles(-sL * 0.95, 0, 0)
-						or CFrame.Angles(0.06, 0, 0)
-					armL.Transform = armL.Transform:Lerp(targetL, limbLerp)
+					armL.C0 = armL.C0:Lerp(
+						armLC0def * (IDLE_ARM_L * CFrame.Angles(-breathe * 0.6, 0, 0)), 0.055)
 				end
-			end
-
-			-- 後肢（腿）：直立步態
-			if legR then
-				local targetLR = isMoving and CFrame.Angles(sL * 0.90, 0, 0)
-					or CFrame.Angles(0.04, 0, 0)
-				legR.Transform = legR.Transform:Lerp(targetLR, limbLerp)
-			end
-			if legL then
-				local targetLL = isMoving and CFrame.Angles(sR * 0.90, 0, 0)
-					or CFrame.Angles(0.04, 0, 0)
-				legL.Transform = legL.Transform:Lerp(targetLL, limbLerp)
+				if legR then
+					legR.C0 = legR.C0:Lerp(legRC0def * IDLE_LEG_R, 0.055)
+				end
+				if legL then
+					legL.C0 = legL.C0:Lerp(legLC0def * IDLE_LEG_L, 0.055)
+				end
 			end
 		end)
 	end

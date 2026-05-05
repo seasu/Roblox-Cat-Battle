@@ -15,10 +15,9 @@ alwaysApply: true
 
 處理任何任務前，請依序參照：
 
-1. **`AGENT.md`** — 版本號準則、工作規範、AI 協作協議（**必讀**）
-2. **`GAME_DESIGN.md`** — 當前實作狀態總覽（✅/⚠️/❌），先確認功能是否已做
-3. **`PRD.md`** — 完整產品需求，包含所有數值、技能、NPC、貨幣定義
-4. **`CLAUDE.md`** — 開發環境、Rojo 結構、代碼守則、部署規則
+1. **`GAME_DESIGN.md`** — 當前實作狀態總覽（✅/⚠️/❌），先確認功能是否已做
+2. **`PRD.md`** — 完整產品需求，包含所有數值、技能、NPC、貨幣定義
+3. **`CLAUDE.md`** — 開發環境、Rojo 結構、代碼守則、部署規則
 
 ---
 
@@ -103,16 +102,9 @@ RemoteFunction：`GetPlayerData` / `GetShopCatalog`
 
 ## 七、每次修改後的強制步驟
 
-1. **遞增 `GameConfig.VERSION`**（`src/shared/GameConfig.lua`）
-2. **更新 `GAME_DESIGN.md`** 的「系統實作狀態總覽」與「變更日誌」
-3. 標記功能狀態：✅ 完成 / ⚠️ 部分 / ❌ 未做
-4. `git commit -m "v0.1.X feat/fix: 描述"`（訊息開頭必須有版本號）
-5. `git push`
-6. PR 標題格式：`v0.1.X 功能描述`
-
-### 版本號定義位置
-- `src/shared/GameConfig.lua`：`GameConfig.VERSION = "v0.1.X"`
-- UI 自動從此處讀取顯示於畫面左下角（`🐾 v0.1.X`）
+1. **更新 `GAME_DESIGN.md`** 的「系統實作狀態總覽」與「變更日誌」
+2. 標記功能狀態：✅ 完成 / ⚠️ 部分 / ❌ 未做
+3. `git add . && git commit -m "..."` → `git push`
 
 ---
 
