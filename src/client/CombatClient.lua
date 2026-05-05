@@ -883,12 +883,6 @@ local function playBothArmsSwing(angle: number, duration: number)
 			elbowPitch = 0.40 * (1 - ease)
 		end
 
-		-- 揮擊幅度加大 100%
-		pitch *= 5
-		yaw *= 5
-		roll *= 5
-		elbowPitch *= 5
-
 		if shoulderR and shoulderRBaseC0 then shoulderR.C0 = shoulderRBaseC0 * CFrame.Angles(pitch, yaw, roll) end
 		if shoulderL and shoulderLBaseC0 then shoulderL.C0 = shoulderLBaseC0 * CFrame.Angles(pitch, -yaw, -roll) end
 		if elbowR and elbowRBaseC0 then elbowR.C0 = elbowRBaseC0 * CFrame.Angles(elbowPitch, 0, 0) end
