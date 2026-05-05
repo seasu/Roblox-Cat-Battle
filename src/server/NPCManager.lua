@@ -122,6 +122,26 @@ local function ap(model, name, size, pos, color, canCollide, shape)
 	return p
 end
 
+-- 建立一個 MeshPart (透過 FileMesh) 並加入 model
+local function am(model, name, meshId, size, pos, color, canCollide)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = canCollide == true
+	p.Size = size
+	p.Position = pos
+	p.BrickColor = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.Parent = model
+
+	local m = Instance.new("SpecialMesh")
+	m.MeshId = meshId
+	m.Scale = Vector3.new(1, 1, 1) -- 預設比例，由 Part Size 控制
+	m.Parent = p
+
+	return p
+end
+
 -- 建立 HP / 名稱浮動標籤（topOffset = body 中心到模型頂端的距離）
 local function addInfoGui(body, def, topOffset)
 	local billboard = Instance.new("BillboardGui")
@@ -156,226 +176,155 @@ local function addInfoGui(body, def, topOffset)
 	hpLabel.Parent = billboard
 end
 
--- ── 玩偶（圓胖毛絨布偶） ────────────────────────────────────────────
+-- ── 玩偶（超級圓潤、軟萌配色） ──────────────────────────────────────────
 local function buildDollModel(def, instanceId, spawnPos, s, colors)
 	local model = Instance.new("Model")
 	model.Name = def.displayName
 	local X, Y, Z = spawnPos.X, spawnPos.Y, spawnPos.Z
 
-	-- 身體（圓胖主體）
+	-- 身體（圓潤大球體）
 	local body = ap(model, "Body",
-		Vector3.new(2.5*s, 3*s, 2*s),
-		Vector3.new(X, Y + 1.5*s, Z),
-		colors.main, true)
+		Vector3.new(2.8*s, 2.8*s, 2.8*s),
+		Vector3.new(X, Y + 1.4*s, Z),
+		colors.main, true, Enum.PartType.Ball)
 	model.PrimaryPart = body
 
-	-- 頭部（球形）
+	-- 頭部（更圓的球）
 	ap(model, "Head",
-		Vector3.new(2.2*s, 2.2*s, 2.2*s),
-		Vector3.new(X, Y + 3.9*s, Z),
+		Vector3.new(2.4*s, 2.4*s, 2.4*s),
+		Vector3.new(X, Y + 3.4*s, Z),
 		colors.main, false, Enum.PartType.Ball)
 
-	-- 貓耳
+	-- 圓耳朵
 	ap(model, "EarL",
-		Vector3.new(0.55*s, 0.6*s, 0.4*s),
-		Vector3.new(X - 0.7*s, Y + 5.25*s, Z - 0.15*s),
-		colors.accent, false)
+		Vector3.new(0.6*s, 0.6*s, 0.6*s),
+		Vector3.new(X - 0.7*s, Y + 4.5*s, Z),
+		colors.accent, false, Enum.PartType.Ball)
 	ap(model, "EarR",
-		Vector3.new(0.55*s, 0.6*s, 0.4*s),
-		Vector3.new(X + 0.7*s, Y + 5.25*s, Z - 0.15*s),
-		colors.accent, false)
+		Vector3.new(0.6*s, 0.6*s, 0.6*s),
+		Vector3.new(X + 0.7*s, Y + 4.5*s, Z),
+		colors.accent, false, Enum.PartType.Ball)
 
-	-- 眼睛（黑球）
+	-- 大大的黑眼睛（呆萌感）
 	ap(model, "EyeL",
-		Vector3.new(0.32*s, 0.32*s, 0.32*s),
-		Vector3.new(X - 0.55*s, Y + 3.9*s, Z - 1.08*s),
+		Vector3.new(0.4*s, 0.4*s, 0.4*s),
+		Vector3.new(X - 0.6*s, Y + 3.4*s, Z - 1.1*s),
 		BrickColor.new("Really black"), false, Enum.PartType.Ball)
 	ap(model, "EyeR",
-		Vector3.new(0.32*s, 0.32*s, 0.32*s),
-		Vector3.new(X + 0.55*s, Y + 3.9*s, Z - 1.08*s),
+		Vector3.new(0.4*s, 0.4*s, 0.4*s),
+		Vector3.new(X + 0.6*s, Y + 3.4*s, Z - 1.1*s),
 		BrickColor.new("Really black"), false, Enum.PartType.Ball)
 
-	-- 腮紅
+	-- 腮紅（必備）
 	ap(model, "CheekL",
-		Vector3.new(0.5*s, 0.35*s, 0.3*s),
-		Vector3.new(X - 0.76*s, Y + 3.65*s, Z - 1.05*s),
+		Vector3.new(0.6*s, 0.4*s, 0.3*s),
+		Vector3.new(X - 0.9*s, Y + 3.1*s, Z - 1.0*s),
 		BrickColor.new("Carnation pink"), false, Enum.PartType.Ball)
 	ap(model, "CheekR",
-		Vector3.new(0.5*s, 0.35*s, 0.3*s),
-		Vector3.new(X + 0.76*s, Y + 3.65*s, Z - 1.05*s),
+		Vector3.new(0.6*s, 0.4*s, 0.3*s),
+		Vector3.new(X + 0.9*s, Y + 3.1*s, Z - 1.0*s),
 		BrickColor.new("Carnation pink"), false, Enum.PartType.Ball)
-
-	-- 手臂
-	ap(model, "ArmL",
-		Vector3.new(0.7*s, 2*s, 0.7*s),
-		Vector3.new(X - 1.65*s, Y + 1.5*s, Z),
-		colors.main, false)
-	ap(model, "ArmR",
-		Vector3.new(0.7*s, 2*s, 0.7*s),
-		Vector3.new(X + 1.65*s, Y + 1.5*s, Z),
-		colors.main, false)
 
 	local idVal = Instance.new("StringValue")
 	idVal.Name = "InstanceId"
 	idVal.Value = instanceId
 	idVal.Parent = model
 
-	-- 頂端 ≈ Y+5.55*s，body 中心 Y+1.5*s → topOffset = 4.05*s
-	addInfoGui(body, def, 4.05*s)
+	addInfoGui(body, def, 3.5*s)
 	model.Parent = workspace
 	return model
 end
 
--- ── 野貓（低趴攻擊姿勢） ────────────────────────────────────────────
+-- ── 野貓（使用 3D Mesh，更有靈動感） ──────────────────────────────────────────
 local function buildWildCatModel(def, instanceId, spawnPos, s, colors)
 	local model = Instance.new("Model")
 	model.Name = def.displayName
 	local X, Y, Z = spawnPos.X, spawnPos.Y, spawnPos.Z
 
-	-- 四條腿
-	local legSz = Vector3.new(0.7*s, 1.4*s, 0.7*s)
-	ap(model, "LegFL", legSz, Vector3.new(X - 1.2*s, Y + 0.7*s, Z - 0.9*s), colors.main, false)
-	ap(model, "LegFR", legSz, Vector3.new(X + 1.2*s, Y + 0.7*s, Z - 0.9*s), colors.main, false)
-	ap(model, "LegBL", legSz, Vector3.new(X - 1.2*s, Y + 0.7*s, Z + 0.9*s), colors.main, false)
-	ap(model, "LegBR", legSz, Vector3.new(X + 1.2*s, Y + 0.7*s, Z + 0.9*s), colors.main, false)
+	-- 四條短胖腿
+	local legSz = Vector3.new(0.6*s, 1.0*s, 0.6*s)
+	ap(model, "LegFL", legSz, Vector3.new(X - 1.0*s, Y + 0.5*s, Z - 0.8*s), colors.main, false)
+	ap(model, "LegFR", legSz, Vector3.new(X + 1.0*s, Y + 0.5*s, Z - 0.8*s), colors.main, false)
+	ap(model, "LegBL", legSz, Vector3.new(X - 1.0*s, Y + 0.5*s, Z + 0.8*s), colors.main, false)
+	ap(model, "LegBR", legSz, Vector3.new(X + 1.0*s, Y + 0.5*s, Z + 0.8*s), colors.main, false)
 
-	-- 身體（低趴寬扁）
+	-- 身體（像吐司一樣的方圓形）
 	local body = ap(model, "Body",
-		Vector3.new(3.5*s, 2*s, 3*s),
-		Vector3.new(X, Y + 2.2*s, Z),
+		Vector3.new(3.0*s, 1.8*s, 2.8*s),
+		Vector3.new(X, Y + 1.6*s, Z),
 		colors.main, true)
 	model.PrimaryPart = body
 
-	-- 頭部（前方偏上，球形）
-	ap(model, "Head",
-		Vector3.new(1.9*s, 1.9*s, 1.9*s),
-		Vector3.new(X, Y + 3.65*s, Z - 1.4*s),
-		colors.main, false, Enum.PartType.Ball)
+	-- 3D 頭部（使用 Generic Cat Head Mesh）
+	am(model, "Head",
+		"rbxassetid://74852812713110",
+		Vector3.new(2.2*s, 2.2*s, 2.2*s),
+		Vector3.new(X, Y + 2.8*s, Z - 1.2*s),
+		colors.main, false)
 
-	-- 尖立貓耳
-	ap(model, "EarL",
-		Vector3.new(0.4*s, 0.75*s, 0.3*s),
-		Vector3.new(X - 0.58*s, Y + 4.7*s, Z - 1.4*s),
+	-- 3D 尾巴（使用 Curved Tail Mesh）
+	am(model, "Tail",
+		"rbxassetid://96597653505917",
+		Vector3.new(1.5*s, 1.5*s, 1.5*s),
+		Vector3.new(X, Y + 2.2*s, Z + 2.0*s),
 		colors.accent, false)
-	ap(model, "EarR",
-		Vector3.new(0.4*s, 0.75*s, 0.3*s),
-		Vector3.new(X + 0.58*s, Y + 4.7*s, Z - 1.4*s),
-		colors.accent, false)
-	-- 耳朵內層（粉紅）
-	ap(model, "EarLInner",
-		Vector3.new(0.22*s, 0.45*s, 0.2*s),
-		Vector3.new(X - 0.58*s, Y + 4.68*s, Z - 1.45*s),
-		BrickColor.new("Carnation pink"), false)
-	ap(model, "EarRInner",
-		Vector3.new(0.22*s, 0.45*s, 0.2*s),
-		Vector3.new(X + 0.58*s, Y + 4.68*s, Z - 1.45*s),
-		BrickColor.new("Carnation pink"), false)
-
-	-- 眼睛
-	ap(model, "EyeL",
-		Vector3.new(0.28*s, 0.28*s, 0.28*s),
-		Vector3.new(X - 0.52*s, Y + 3.65*s, Z - 2.35*s),
-		BrickColor.new("Really black"), false, Enum.PartType.Ball)
-	ap(model, "EyeR",
-		Vector3.new(0.28*s, 0.28*s, 0.28*s),
-		Vector3.new(X + 0.52*s, Y + 3.65*s, Z - 2.35*s),
-		BrickColor.new("Really black"), false, Enum.PartType.Ball)
-
-	-- 尾巴（三段，S 形往上翹）
-	ap(model, "TailBase",
-		Vector3.new(0.5*s, 0.5*s, 1.8*s),
-		Vector3.new(X, Y + 2.2*s, Z + 2.15*s),
-		colors.accent, false)
-	ap(model, "TailMid",
-		Vector3.new(0.42*s, 2.1*s, 0.42*s),
-		Vector3.new(X, Y + 3.55*s, Z + 2.75*s),
-		colors.accent, false)
-	ap(model, "TailTip",
-		Vector3.new(0.6*s, 0.6*s, 0.6*s),
-		Vector3.new(X, Y + 4.7*s, Z + 2.75*s),
-		BrickColor.new("White"), false, Enum.PartType.Ball)
 
 	local idVal = Instance.new("StringValue")
 	idVal.Name = "InstanceId"
 	idVal.Value = instanceId
 	idVal.Parent = model
 
-	-- 頂端 ≈ Y+5.08*s，body 中心 Y+2.2*s → topOffset = 2.88*s
-	addInfoGui(body, def, 2.88*s)
+	addInfoGui(body, def, 2.5*s)
 	model.Parent = workspace
 	return model
 end
 
--- ── 野人（直立粗壯蠻人） ────────────────────────────────────────────
+-- ── 野人（Chibi 風格，帶貓耳帽的可愛部落民） ────────────────────────────────────────────
 local function buildWildHumanModel(def, instanceId, spawnPos, s, colors)
 	local model = Instance.new("Model")
 	model.Name = def.displayName
 	local X, Y, Z = spawnPos.X, spawnPos.Y, spawnPos.Z
 
-	-- 雙腿
+	-- 短短的雙腿
 	ap(model, "LegL",
-		Vector3.new(0.9*s, 2.5*s, 0.9*s),
-		Vector3.new(X - 0.55*s, Y + 1.25*s, Z),
+		Vector3.new(0.8*s, 1.2*s, 0.8*s),
+		Vector3.new(X - 0.5*s, Y + 0.6*s, Z),
 		colors.main, false)
 	ap(model, "LegR",
-		Vector3.new(0.9*s, 2.5*s, 0.9*s),
-		Vector3.new(X + 0.55*s, Y + 1.25*s, Z),
+		Vector3.new(0.8*s, 1.2*s, 0.8*s),
+		Vector3.new(X + 0.5*s, Y + 0.6*s, Z),
 		colors.main, false)
 
-	-- 軀幹（主 Part）
+	-- 圓滾滾的軀幹
 	local body = ap(model, "Body",
-		Vector3.new(2.2*s, 3*s, 1.5*s),
-		Vector3.new(X, Y + 4*s, Z),
+		Vector3.new(1.8*s, 2.2*s, 1.4*s),
+		Vector3.new(X, Y + 2.3*s, Z),
 		colors.main, true)
 	model.PrimaryPart = body
 
-	-- 手臂（向外微張）
+	-- 3D 頭部帽（帶貓耳的頭部）
+	am(model, "Head",
+		"rbxassetid://74852812713110",
+		Vector3.new(2.4*s, 2.4*s, 2.4*s),
+		Vector3.new(X, Y + 4.2*s, Z),
+		colors.accent, false)
+
+	-- 手臂（握拳姿勢）
 	ap(model, "ArmL",
-		Vector3.new(0.85*s, 2.8*s, 0.85*s),
-		Vector3.new(X - 1.58*s, Y + 4*s, Z),
+		Vector3.new(0.7*s, 1.5*s, 0.7*s),
+		Vector3.new(X - 1.3*s, Y + 2.5*s, Z),
 		colors.main, false)
 	ap(model, "ArmR",
-		Vector3.new(0.85*s, 2.8*s, 0.85*s),
-		Vector3.new(X + 1.58*s, Y + 4*s, Z),
+		Vector3.new(0.7*s, 1.5*s, 0.7*s),
+		Vector3.new(X + 1.3*s, Y + 2.5*s, Z),
 		colors.main, false)
-
-	-- 頭部（球形）
-	ap(model, "Head",
-		Vector3.new(2*s, 2*s, 2*s),
-		Vector3.new(X, Y + 6.5*s, Z),
-		colors.accent, false, Enum.PartType.Ball)
-
-	-- 眼睛
-	ap(model, "EyeL",
-		Vector3.new(0.32*s, 0.32*s, 0.32*s),
-		Vector3.new(X - 0.5*s, Y + 6.5*s, Z - 0.95*s),
-		BrickColor.new("Really black"), false, Enum.PartType.Ball)
-	ap(model, "EyeR",
-		Vector3.new(0.32*s, 0.32*s, 0.32*s),
-		Vector3.new(X + 0.5*s, Y + 6.5*s, Z - 0.95*s),
-		BrickColor.new("Really black"), false, Enum.PartType.Ball)
-
-	-- 亂蓬蓬的野髮
-	ap(model, "HairMain",
-		Vector3.new(1.8*s, 0.6*s, 1.6*s),
-		Vector3.new(X, Y + 7.65*s, Z - 0.1*s),
-		colors.accent, false)
-	ap(model, "HairL",
-		Vector3.new(0.5*s, 0.9*s, 0.4*s),
-		Vector3.new(X - 0.85*s, Y + 7.45*s, Z),
-		colors.accent, false)
-	ap(model, "HairR",
-		Vector3.new(0.5*s, 0.9*s, 0.4*s),
-		Vector3.new(X + 0.85*s, Y + 7.45*s, Z),
-		colors.accent, false)
 
 	local idVal = Instance.new("StringValue")
 	idVal.Name = "InstanceId"
 	idVal.Value = instanceId
 	idVal.Parent = model
 
-	-- 頂端 ≈ Y+7.9*s，body 中心 Y+4*s → topOffset = 3.9*s
-	addInfoGui(body, def, 3.9*s)
+	addInfoGui(body, def, 3.8*s)
 	model.Parent = workspace
 	return model
 end

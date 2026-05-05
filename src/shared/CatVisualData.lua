@@ -20,7 +20,8 @@ CatVisualData.cats = {
 	whiteCat = {
 		name = "白貓",
 		baseColor = Color3.fromRGB(255, 255, 255),
-		headMeshId = "rbxassetid://98199924495373",
+		baseSuitAssetId = "rbxassetid://91532946724584",
+		headMeshId = "rbxassetid://110516593277125",
 		headTextureId = PLACEHOLDER_TEX,
 		tailMeshId = "rbxassetid://96597653505917",
 		-- 支援動態表情切換
