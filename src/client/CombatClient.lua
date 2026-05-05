@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
-local CatVisualData = require(ReplicatedStorage.shared.CatVisualData)
+local CatVisualData = require(ReplicatedStorage.Shared.CatVisualData)
 
 local CombatClient = {}
 

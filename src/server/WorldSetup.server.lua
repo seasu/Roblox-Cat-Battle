@@ -1,6 +1,16 @@
 local workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 
+-- ── 啟動偵測 ──────────────────────────────────────────────────────
+print("[WorldSetup] 伺服器地圖腳本啟動中...")
+local debugPart = Instance.new("Part")
+debugPart.Name = "DEBUG_START_MARKER"
+debugPart.Size = Vector3.new(10, 10, 10)
+debugPart.Position = Vector3.new(0, 50, 0)
+debugPart.BrickColor = BrickColor.new("Bright yellow")
+debugPart.Anchored = true
+debugPart.Parent = workspace
+
 -- ── 輔助函數 ──────────────────────────────────────────────────────
 
 local function makePart(props: {
