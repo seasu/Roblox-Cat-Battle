@@ -727,6 +727,10 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 	local shoulderL = getArmMotor(char, "Left")
 	local elbowR = getElbowMotor(char, "Right")
 	local elbowL = getElbowMotor(char, "Left")
+	local shoulderRBaseC0 = shoulderR.C0
+	local shoulderLBaseC0 = shoulderL and shoulderL.C0 or nil
+	local elbowRBaseC0 = elbowR and elbowR.C0 or nil
+	local elbowLBaseC0 = elbowL and elbowL.C0 or nil
 
 	-- 若有舊的揮手動畫還在跑，強制中斷再重新開始
 	if swingConnection then
@@ -742,12 +746,12 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 		local t = elapsed / duration
 
 		if t >= 1 or not char.Parent or not shoulderR.Parent then
-			shoulderR.Transform = CFrame.new()
+			shoulderR.C0 = shoulderRBaseC0
 			if shoulderL then
-				shoulderL.Transform = CFrame.new()
+				shoulderL.C0 = shoulderLBaseC0 or shoulderL.C0
 			end
-			if elbowR then elbowR.Transform = CFrame.new() end
-			if elbowL then elbowL.Transform = CFrame.new() end
+			if elbowR then elbowR.C0 = elbowRBaseC0 or elbowR.C0 end
+			if elbowL then elbowL.C0 = elbowLBaseC0 or elbowL.C0 end
 			if swingConnection then swingConnection:Disconnect(); swingConnection = nil end
 			swingActive = false
 			return
@@ -782,16 +786,22 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			elbowPitch = 0.50 * (1 - ease)
 		end
 
+		-- 揮擊幅度加大 100%
+		pitch *= 5
+		yaw *= 5
+		roll *= 5
+		elbowPitch *= 5
+
 		-- 右手主攻擊，左手反向平衡，讓揮擊更容易被看見
-		shoulderR.Transform = CFrame.Angles(pitch, yaw, roll)
+		shoulderR.C0 = shoulderRBaseC0 * CFrame.Angles(pitch, yaw, roll)
 		if shoulderL then
-			shoulderL.Transform = CFrame.Angles(-pitch * 0.24, -yaw * 0.45, -roll * 0.35)
+			shoulderL.C0 = (shoulderLBaseC0 or shoulderL.C0) * CFrame.Angles(-pitch * 0.24, -yaw * 0.45, -roll * 0.35)
 		end
 		if elbowR then
-			elbowR.Transform = CFrame.Angles(elbowPitch, 0, 0)
+			elbowR.C0 = (elbowRBaseC0 or elbowR.C0) * CFrame.Angles(elbowPitch, 0, 0)
 		end
 		if elbowL then
-			elbowL.Transform = CFrame.Angles(-elbowPitch * 0.25, 0, 0)
+			elbowL.C0 = (elbowLBaseC0 or elbowL.C0) * CFrame.Angles(-elbowPitch * 0.25, 0, 0)
 		end
 	end)
 end
@@ -816,6 +826,10 @@ local function playBothArmsSwing(angle: number, duration: number)
 	local shoulderL = getArmMotor(char, "Left")
 	local elbowR = getElbowMotor(char, "Right")
 	local elbowL = getElbowMotor(char, "Left")
+	local shoulderRBaseC0 = shoulderR and shoulderR.C0 or nil
+	local shoulderLBaseC0 = shoulderL and shoulderL.C0 or nil
+	local elbowRBaseC0 = elbowR and elbowR.C0 or nil
+	local elbowLBaseC0 = elbowL and elbowL.C0 or nil
 	if not shoulderR and not shoulderL then
 		return
 	end
@@ -829,10 +843,10 @@ local function playBothArmsSwing(angle: number, duration: number)
 	swingConnection = RunService.RenderStepped:Connect(function()
 		local t = (os.clock() - startTime) / duration
 		if t >= 1 or not char.Parent then
-			if shoulderR then shoulderR.Transform = CFrame.new() end
-			if shoulderL then shoulderL.Transform = CFrame.new() end
-			if elbowR then elbowR.Transform = CFrame.new() end
-			if elbowL then elbowL.Transform = CFrame.new() end
+			if shoulderR and shoulderRBaseC0 then shoulderR.C0 = shoulderRBaseC0 end
+			if shoulderL and shoulderLBaseC0 then shoulderL.C0 = shoulderLBaseC0 end
+			if elbowR and elbowRBaseC0 then elbowR.C0 = elbowRBaseC0 end
+			if elbowL and elbowLBaseC0 then elbowL.C0 = elbowLBaseC0 end
 			if swingConnection then
 				swingConnection:Disconnect()
 				swingConnection = nil
@@ -869,10 +883,16 @@ local function playBothArmsSwing(angle: number, duration: number)
 			elbowPitch = 0.40 * (1 - ease)
 		end
 
-		if shoulderR then shoulderR.Transform = CFrame.Angles(pitch, yaw, roll) end
-		if shoulderL then shoulderL.Transform = CFrame.Angles(pitch, -yaw, -roll) end
-		if elbowR then elbowR.Transform = CFrame.Angles(elbowPitch, 0, 0) end
-		if elbowL then elbowL.Transform = CFrame.Angles(elbowPitch, 0, 0) end
+		-- 揮擊幅度加大 100%
+		pitch *= 5
+		yaw *= 5
+		roll *= 5
+		elbowPitch *= 5
+
+		if shoulderR and shoulderRBaseC0 then shoulderR.C0 = shoulderRBaseC0 * CFrame.Angles(pitch, yaw, roll) end
+		if shoulderL and shoulderLBaseC0 then shoulderL.C0 = shoulderLBaseC0 * CFrame.Angles(pitch, -yaw, -roll) end
+		if elbowR and elbowRBaseC0 then elbowR.C0 = elbowRBaseC0 * CFrame.Angles(elbowPitch, 0, 0) end
+		if elbowL and elbowLBaseC0 then elbowL.C0 = elbowLBaseC0 * CFrame.Angles(elbowPitch, 0, 0) end
 	end)
 end
 
