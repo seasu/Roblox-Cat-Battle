@@ -1,0 +1,69 @@
+{
+  "name": "Roblox-Cat-Battle",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "src/server"
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "src/client"
+      }
+    },
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$className": "Folder",
+        "$path": "src/shared"
+      },
+      "RemoteEvents": {
+        "$className": "Folder",
+
+        "RequestLoadData":     { "$className": "RemoteEvent" },
+        "LoadDataResponse":    { "$className": "RemoteEvent" },
+        "AddXP":               { "$className": "RemoteEvent" },
+        "LevelUp":             { "$className": "RemoteEvent" },
+        "UpdateCatAppearance": { "$className": "RemoteEvent" },
+        "SelectCat":           { "$className": "RemoteEvent" },
+        "SpawnNPC":            { "$className": "RemoteEvent" },
+        "NPCDied":             { "$className": "RemoteEvent" },
+        "PurchaseCat":         { "$className": "RemoteEvent" },
+        "PurchaseResult":      { "$className": "RemoteEvent" },
+        "EquipItem":           { "$className": "RemoteEvent" },
+        "UnequipItem":         { "$className": "RemoteEvent" },
+        "EquipmentChanged":    { "$className": "RemoteEvent" },
+        "UseSkill":            { "$className": "RemoteEvent" },
+        "SkillResult":         { "$className": "RemoteEvent" },
+        "SkillUnlocked":       { "$className": "RemoteEvent" },
+        "CombatHit":           { "$className": "RemoteEvent" },
+        "PlayerDied":          { "$className": "RemoteEvent" },
+        "RequestRespawn":      { "$className": "RemoteEvent" },
+        "UpdateUI":            { "$className": "RemoteEvent" },
+        "RequestPvP":          { "$className": "RemoteEvent" },
+        "PvPInvite":           { "$className": "RemoteEvent" },
+        "PvPAccepted":         { "$className": "RemoteEvent" },
+        "PvPResult":           { "$className": "RemoteEvent" },
+
+        "BuyEquipment":        { "$className": "RemoteEvent" },
+        "OwnedItemsChanged":   { "$className": "RemoteEvent" },
+        "NPCDrops":            { "$className": "RemoteEvent" },
+        "SynthesizeCat":       { "$className": "RemoteEvent" },
+        "SynthesisResult":     { "$className": "RemoteEvent" },
+        "UpdateFragments":     { "$className": "RemoteEvent" }
+      },
+
+      "RemoteFunctions": {
+        "$className": "Folder",
+        "GetPlayerData":   { "$className": "RemoteFunction" },
+        "GetShopCatalog":  { "$className": "RemoteFunction" },
+        "GetOwnedItems":   { "$className": "RemoteFunction" }
+      }
+    }
+  }
+}
