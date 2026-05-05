@@ -58,13 +58,6 @@ end)
 
 getEvent("LevelUp").OnClientEvent:Connect(function(newLevel: number)
 	UIManager.showLevelUpEffect(newLevel)
-	-- 升級音效：響亮的慶祝聲
-	local s = Instance.new("Sound")
-	s.SoundId = "rbxassetid://3046537781"  -- level up fanfare
-	s.Volume  = 1.0
-	s.Parent  = game:GetService("SoundService")
-	s:Play()
-	game:GetService("Debris"):AddItem(s, 5)
 end)
 
 -- ── 貓咪外觀更新 ─────────────────────────────────────────────────

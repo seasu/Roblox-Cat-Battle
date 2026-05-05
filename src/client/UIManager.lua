@@ -9,6 +9,7 @@ local UIManager = {}
 local screenGui: ScreenGui
 local xpBar: Frame
 local xpFill: Frame
+local xpTextLabel: TextLabel
 local levelLabel: TextLabel
 local coinLabel: TextLabel
 local catLabel: TextLabel
@@ -195,67 +196,119 @@ function UIManager.init(playerData: any)
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	-- ── 左上角 HUD（固定像素高度，避免 scale 在手機端造成文字溢出重疊）──
-	local hudBg = createFrame(screenGui,
-		UDim2.new(0, 6, 0, 6),
-		UDim2.new(0.27, 0, 0, 66),
-		Color3.fromRGB(0, 0, 0), 0.45)
+	-- ── 左上角 HUD（整合等級徽章，資訊層級更清晰）──
+	local hudBg = Instance.new("Frame")
+	hudBg.Position = UDim2.new(0, 6, 0, 6)
+	hudBg.Size = UDim2.new(0.30, 0, 0, 80)
+	hudBg.BackgroundColor3 = THEME.panel
+	hudBg.BackgroundTransparency = 0.18
+	hudBg.BorderSizePixel = 0
 	hudBg.ZIndex = 2
-	local hudCorner = Instance.new("UICorner")
-	hudCorner.CornerRadius = UDim.new(0, 6)
-	hudCorner.Parent = hudBg
+	hudBg.Parent = screenGui
+	applyCorner(hudBg, 10)
+	applyStroke(hudBg, THEME.panelStroke, 1.5, 0.35)
+
 	local hudPad = Instance.new("UIPadding")
 	hudPad.PaddingLeft   = UDim.new(0, 8)
 	hudPad.PaddingRight  = UDim.new(0, 10)
-	hudPad.PaddingTop    = UDim.new(0, 6)
-	hudPad.PaddingBottom = UDim.new(0, 6)
+	hudPad.PaddingTop    = UDim.new(0, 7)
+	hudPad.PaddingBottom = UDim.new(0, 7)
 	hudPad.Parent = hudBg
 
-	-- 金幣：固定 28px 高，文字不會溢出
+	-- ── 第一行：金幣 🪙 ──
+	local coinRow = Instance.new("Frame")
+	coinRow.Size = UDim2.new(1, 0, 0, 30)
+	coinRow.Position = UDim2.new(0, 0, 0, 0)
+	coinRow.BackgroundTransparency = 1
+	coinRow.ZIndex = 3
+	coinRow.Parent = hudBg
+
+	local coinIcon = Instance.new("TextLabel")
+	coinIcon.Text = "🪙"
+	coinIcon.Size = UDim2.new(0, 26, 1, 0)
+	coinIcon.Position = UDim2.new(0, 0, 0, 0)
+	coinIcon.BackgroundTransparency = 1
+	coinIcon.TextScaled = true
+	coinIcon.Font = Enum.Font.GothamBold
+	coinIcon.TextColor3 = Color3.new(1, 1, 1)
+	coinIcon.ZIndex = 3
+	coinIcon.Parent = coinRow
+
 	coinLabel = Instance.new("TextLabel")
-	coinLabel.Text = "金幣: 0"
-	coinLabel.Position = UDim2.new(0, 0, 0, 0)
-	coinLabel.Size = UDim2.new(1, 0, 0, 28)
-	coinLabel.AnchorPoint = Vector2.new(0, 0)
+	coinLabel.Text = "0"
+	coinLabel.Position = UDim2.new(0, 28, 0, 1)
+	coinLabel.Size = UDim2.new(1, -28, 0, 26)
 	coinLabel.BackgroundTransparency = 1
-	coinLabel.TextColor3 = Color3.new(1, 1, 1)
+	coinLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
 	coinLabel.TextStrokeTransparency = 0.5
+	coinLabel.TextStrokeColor3 = Color3.fromRGB(20, 24, 38)
 	coinLabel.Font = Enum.Font.GothamBold
 	coinLabel.TextSize = 18
 	coinLabel.TextScaled = false
 	coinLabel.TextXAlignment = Enum.TextXAlignment.Left
 	coinLabel.ZIndex = 3
-	coinLabel.Parent = hudBg
+	coinLabel.Parent = coinRow
 
-	-- 分隔線（讓兩行視覺上有明確間距）
-	local divider = createFrame(hudBg,
-		UDim2.new(0, 0, 0, 32),
-		UDim2.new(1, 0, 0, 2),
-		Color3.fromRGB(255, 255, 255), 0.85)
+	-- 分隔線
+	local divider = Instance.new("Frame")
+	divider.Size = UDim2.new(1, 0, 0, 1)
+	divider.Position = UDim2.new(0, 0, 0, 34)
+	divider.BackgroundColor3 = THEME.panelStroke
+	divider.BackgroundTransparency = 0.45
+	divider.BorderSizePixel = 0
 	divider.ZIndex = 3
+	divider.Parent = hudBg
 
-	-- 貓咪名稱：固定 26px 高，第 36px 起
+	-- ── 第二行：貓咪名稱 + 等級徽章 ──
+	local catRow = Instance.new("Frame")
+	catRow.Size = UDim2.new(1, 0, 0, 30)
+	catRow.Position = UDim2.new(0, 0, 0, 38)
+	catRow.BackgroundTransparency = 1
+	catRow.ZIndex = 3
+	catRow.Parent = hudBg
+
 	catLabel = Instance.new("TextLabel")
-	catLabel.Text = "白貓 — 幼貓"
-	catLabel.Position = UDim2.new(0, 0, 0, 36)
-	catLabel.Size = UDim2.new(1, 0, 0, 26)
-	catLabel.AnchorPoint = Vector2.new(0, 0)
+	catLabel.Text = "🐱 白貓 — 幼貓"
+	catLabel.Position = UDim2.new(0, 0, 0, 2)
+	catLabel.Size = UDim2.new(1, -62, 0, 26)
 	catLabel.BackgroundTransparency = 1
-	catLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-	catLabel.TextStrokeTransparency = 0.5
-	catLabel.Font = Enum.Font.Gotham
+	catLabel.TextColor3 = THEME.textSecondary
+	catLabel.TextStrokeTransparency = 0.7
+	catLabel.TextStrokeColor3 = Color3.fromRGB(20, 24, 38)
+	catLabel.Font = Enum.Font.GothamSemibold
 	catLabel.TextSize = 14
 	catLabel.TextScaled = false
 	catLabel.TextXAlignment = Enum.TextXAlignment.Left
 	catLabel.ZIndex = 3
-	catLabel.Parent = hudBg
+	catLabel.Parent = catRow
 
-	-- 版本號：固定在畫面左下角，清楚可見
+	-- 等級徽章（Pill，右側嵌入）
+	levelLabel = Instance.new("TextLabel")
+	levelLabel.Name = "LevelBadge"
+	levelLabel.Text = "Lv.1"
+	levelLabel.Size = UDim2.new(0, 56, 0, 24)
+	levelLabel.Position = UDim2.new(1, 0, 0.5, 0)
+	levelLabel.AnchorPoint = Vector2.new(1, 0.5)
+	levelLabel.BackgroundColor3 = THEME.button
+	levelLabel.BackgroundTransparency = 0.1
+	levelLabel.BorderSizePixel = 0
+	levelLabel.TextColor3 = THEME.textPrimary
+	levelLabel.TextStrokeTransparency = 1
+	levelLabel.Font = Enum.Font.GothamBold
+	levelLabel.TextSize = 13
+	levelLabel.TextScaled = false
+	levelLabel.ZIndex = 4
+	levelLabel.Parent = catRow
+	local lvCorner = Instance.new("UICorner")
+	lvCorner.CornerRadius = UDim.new(1, 0)
+	lvCorner.Parent = levelLabel
+
+	-- 版本號（左下角，小字）
 	local gameVersion = require(ReplicatedStorage.Shared.GameConfig).VERSION
 	local versionLabel = Instance.new("TextLabel")
 	versionLabel.Name = "VersionLabel"
 	versionLabel.Text = "🐾 " .. gameVersion
-	versionLabel.Position = UDim2.new(0, 6, 1, -22)  -- 左下角固定位置
+	versionLabel.Position = UDim2.new(0, 6, 1, -22)
 	versionLabel.Size = UDim2.new(0, 90, 0, 18)
 	versionLabel.AnchorPoint = Vector2.new(0, 0)
 	versionLabel.BackgroundTransparency = 0.45
@@ -271,24 +324,37 @@ function UIManager.init(playerData: any)
 	vc.CornerRadius = UDim.new(0, 5)
 	vc.Parent = versionLabel
 
-	-- ── XP 條與等級（level label 移至 Y=0.905 避開技能列 Y=0.82~0.89）──
+	-- ── XP 條（底部，含 XP 數字覆蓋）──
 	local xpBg = createFrame(screenGui,
-		UDim2.new(0.3, 0, 0.945, 0),
-		UDim2.new(0.4, 0, 0.038, 0),
-		Color3.fromRGB(30, 30, 30), 0.3)
+		UDim2.new(0.3, 0, 0.948, 0),
+		UDim2.new(0.4, 0, 0.034, 0),
+		Color3.fromRGB(22, 22, 36), 0.25)
+	local xpBgAutoCorner = xpBg:FindFirstChild("AutoCorner")
+	if xpBgAutoCorner then (xpBgAutoCorner :: UICorner).CornerRadius = UDim.new(1, 0) end
 
 	xpFill = createFrame(xpBg,
 		UDim2.new(0, 0, 0, 0),
 		UDim2.new(0, 0, 1, 0),
-		Color3.fromRGB(80, 200, 100), 0)
+		Color3.fromRGB(80, 210, 110), 0)
+	local xpFillAutoCorner = xpFill:FindFirstChild("AutoCorner")
+	if xpFillAutoCorner then (xpFillAutoCorner :: UICorner).CornerRadius = UDim.new(1, 0) end
 
 	xpBar = xpBg
 
-	-- 等級標籤：X=0.30~0.40，介於裝備和PvP按鈕之間，Y=0.900 在技能列（~0.89）之下
-	levelLabel = createLabel(screenGui, "Lv.1",
-		UDim2.new(0.3, 0, 0.900, 0),
-		UDim2.new(0.1, 0, 0.040, 0), 22)
-	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+	-- XP 數值文字
+	xpTextLabel = Instance.new("TextLabel")
+	xpTextLabel.Name = "XPText"
+	xpTextLabel.Size = UDim2.new(1, 0, 1, 0)
+	xpTextLabel.BackgroundTransparency = 1
+	xpTextLabel.Text = "0 / 100 XP"
+	xpTextLabel.TextColor3 = THEME.textPrimary
+	xpTextLabel.TextStrokeTransparency = 0.3
+	xpTextLabel.TextStrokeColor3 = Color3.fromRGB(20, 24, 38)
+	xpTextLabel.Font = Enum.Font.GothamBold
+	xpTextLabel.TextSize = 11
+	xpTextLabel.TextXAlignment = Enum.TextXAlignment.Center
+	xpTextLabel.ZIndex = xpBg.ZIndex + 2
+	xpTextLabel.Parent = xpBg
 
 	-- 浮動通知
 	toastLabel = createLabel(screenGui, "",
@@ -540,7 +606,7 @@ local function makeGridScroll(parent: Frame, cellSize: UDim2): (ScrollingFrame, 
 	return scroll, grid
 end
 
--- 建立一個格狀圖示卡片（正方形，大 Emoji + 名稱 + 狀態徽章）
+-- 建立一個格狀圖示卡片（正方形，大 Emoji + 名稱 + 狀態徽章 + UIStroke 光暈 + 圖示底板）
 local function buildIconCard(parent: Frame, order: number, opts: {
 	id: string,
 	emoji: string,
@@ -556,7 +622,7 @@ local function buildIconCard(parent: Frame, order: number, opts: {
 	card.Name = "IconCard_" .. opts.id
 	card.BackgroundColor3 = opts.dimmed and Color3.fromRGB(18, 18, 28)
 		or opts.bgColor
-	card.BackgroundTransparency = opts.dimmed and 0.15 or 0.2
+	card.BackgroundTransparency = opts.dimmed and 0.15 or 0.18
 	card.BorderSizePixel = 0
 	card.LayoutOrder = order
 	card.ZIndex = 23
@@ -566,7 +632,36 @@ local function buildIconCard(parent: Frame, order: number, opts: {
 	cardCorner.CornerRadius = UDim.new(0, 12)
 	cardCorner.Parent = card
 
-	-- 大 Emoji（佔上方 55%）
+	-- 邊框光暈（UIStroke）：依狀態決定顏色
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = opts.dimmed
+		and Color3.fromRGB(55, 55, 80)
+		or opts.badgeColor
+	stroke.Thickness = opts.dimmed and 1 or 1.8
+	stroke.Transparency = opts.dimmed and 0.6 or 0.22
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = card
+
+	-- 圖示底板（Emoji 背後的圓角方塊，增加深度）
+	local iconPlate = Instance.new("Frame")
+	iconPlate.Size = UDim2.new(0.76, 0, 0.50, 0)
+	iconPlate.Position = UDim2.new(0.12, 0, 0.04, 0)
+	iconPlate.BackgroundColor3 = opts.dimmed
+		and Color3.fromRGB(24, 24, 38)
+		or Color3.new(
+			opts.bgColor.R * 0.52,
+			opts.bgColor.G * 0.52,
+			opts.bgColor.B * 0.52
+		)
+	iconPlate.BackgroundTransparency = 0.20
+	iconPlate.BorderSizePixel = 0
+	iconPlate.ZIndex = 23
+	iconPlate.Parent = card
+	local ipCorner = Instance.new("UICorner")
+	ipCorner.CornerRadius = UDim.new(0, 9)
+	ipCorner.Parent = iconPlate
+
+	-- 大 Emoji（疊在底板上方）
 	local emojiLbl = Instance.new("TextLabel")
 	emojiLbl.Size = UDim2.new(1, 0, 0.52, 0)
 	emojiLbl.Position = UDim2.new(0, 0, 0.03, 0)
@@ -581,33 +676,34 @@ local function buildIconCard(parent: Frame, order: number, opts: {
 
 	-- 名稱（中段）
 	local nameLbl = Instance.new("TextLabel")
-	nameLbl.Size = UDim2.new(1, -8, 0.22, 0)
-	nameLbl.Position = UDim2.new(0, 4, 0.54, 0)
+	nameLbl.Size = UDim2.new(1, -8, 0.21, 0)
+	nameLbl.Position = UDim2.new(0, 4, 0.55, 0)
 	nameLbl.BackgroundTransparency = 1
 	nameLbl.Text = opts.name
 	nameLbl.TextScaled = true
 	nameLbl.Font = Enum.Font.GothamBold
-	nameLbl.TextColor3 = opts.dimmed and Color3.fromRGB(140, 140, 160)
+	nameLbl.TextColor3 = opts.dimmed and Color3.fromRGB(130, 130, 155)
 		or Color3.new(1, 1, 1)
-	nameLbl.TextStrokeTransparency = 0.5
+	nameLbl.TextStrokeTransparency = 0.6
 	nameLbl.ZIndex = 24
 	nameLbl.Parent = card
 
-	-- 狀態徽章（底部）
+	-- 狀態徽章（底部，略收邊讓圓角不超出卡片）
 	local badge = Instance.new("Frame")
-	badge.Size = UDim2.new(1, 0, 0.22, 0)
-	badge.Position = UDim2.new(0, 0, 0.78, 0)
+	badge.Size = UDim2.new(1, -4, 0.21, 0)
+	badge.Position = UDim2.new(0, 2, 0.79, 0)
 	badge.BackgroundColor3 = opts.badgeColor
-	badge.BackgroundTransparency = 0.1
+	badge.BackgroundTransparency = 0.05
 	badge.BorderSizePixel = 0
 	badge.ZIndex = 24
 	badge.Parent = card
 	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 10)
+	badgeCorner.CornerRadius = UDim.new(0, 8)
 	badgeCorner.Parent = badge
 
 	local badgeLbl = Instance.new("TextLabel")
-	badgeLbl.Size = UDim2.new(1, 0, 1, 0)
+	badgeLbl.Size = UDim2.new(1, -4, 1, 0)
+	badgeLbl.Position = UDim2.new(0, 2, 0, 0)
 	badgeLbl.BackgroundTransparency = 1
 	badgeLbl.Text = opts.badgeText
 	badgeLbl.TextScaled = true
@@ -625,12 +721,13 @@ local function buildIconCard(parent: Frame, order: number, opts: {
 		btn.ZIndex = 26
 		btn.Parent = card
 		btn.MouseButton1Click:Connect(opts.onClick)
-		-- 懸停高亮
 		btn.MouseEnter:Connect(function()
-			card.BackgroundTransparency = opts.dimmed and 0.05 or 0.05
+			card.BackgroundTransparency = 0.04
+			stroke.Transparency = opts.dimmed and 0.45 or 0.05
 		end)
 		btn.MouseLeave:Connect(function()
-			card.BackgroundTransparency = opts.dimmed and 0.15 or 0.2
+			card.BackgroundTransparency = opts.dimmed and 0.15 or 0.18
+			stroke.Transparency = opts.dimmed and 0.6 or 0.22
 		end)
 	end
 
@@ -1128,8 +1225,11 @@ end
 
 function UIManager.updateXPBar(current: number, max: number, level: number)
 	if not xpFill then return end
-	levelLabel.Text = "Lv." .. level
+	if levelLabel then levelLabel.Text = "Lv." .. level end
 	local ratio = max > 0 and math.clamp(current / max, 0, 1) or 0
+	if xpTextLabel then
+		xpTextLabel.Text = string.format("%d / %d XP", current, max)
+	end
 	local tween = TweenService:Create(xpFill,
 		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 		{ Size = UDim2.new(ratio, 0, 1, 0) })
@@ -1208,13 +1308,14 @@ function UIManager.refreshCatDisplay(catId: string, appearance: string, level: n
 	if catLabel then
 		local cat = CatData.getCatById(catId)
 		local name = cat and cat.displayName or catId
-		catLabel.Text = name .. " — " .. tierDesc
+		local emoji = ICON_EMOJI[catId] or "🐱"
+		catLabel.Text = emoji .. " " .. name .. " — " .. tierDesc
 	end
 end
 
 function UIManager.updateCoinDisplay(coins: number)
 	if coinLabel then
-		coinLabel.Text = "金幣: " .. coins
+		coinLabel.Text = tostring(math.floor(coins or 0))
 	end
 end
 

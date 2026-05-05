@@ -1,13 +1,13 @@
 # 🏚️ Poor Man's Agent Team (P.M.A.T.) - Project Brain (貓咪大戰)
 
 ## 📍 1. 當前會話快照 (Context Snapshot)
-> **STATUS:** 活躍開發中
-- **Version:** `v0.1.9`
+> **STATUS:** 任務進行中 - v0.1.6 修復完成。
+- **Version:** `v0.1.7`
 - **Last Sync:** 2026-05-04
 - **Battery Level:** 🟢 [電量充足]
 - **Project Goal:** 打造一款高品質的 Roblox 貓咪戰鬥 RPG 遊戲，具備完整的數值系統、裝備系統與 PvP/PvE 玩法。
-- **Current Task:** 四足步態改進、版本號顯示、背包系統、貓咪外觀 chibi 化。
-- **Next Step:** 根據 `PRD.md` 與 `GAME_DESIGN.md` 持續完善各系統。
+- **Current Task:** 已修復攻擊動畫不觸發的問題，並實作貓咪四足走路前傾姿勢優化。
+- **Next Step:** 根據 `PRD.md` 與 `GAME_DESIGN.md` 開始開發核心系統。
 
 ---
 
@@ -56,38 +56,3 @@
 1. **初始化:** 讀取此文件後，先確認具備檔案與 Git 權限。
 2. **任務優先:** 查閱 `GAME_DESIGN.md` 以了解當前開發進度。
 3. **保持自律:** 僅在需要時讀取代碼，節省 Token。
-
----
-
-## 🔖 8. 版本號工作準則（強制執行）
-
-> 每一次修改程式碼，**不論大小**，都必須遵守以下流程：
-
-### 8.1 版本號格式
-- 格式：`v{主版本}.{次版本}.{修訂號}`，例如 `v0.1.9`
-- 版本號定義在 `src/shared/GameConfig.lua`：`GameConfig.VERSION = "v0.1.9"`
-- **每次 commit 前必須遞增修訂號**（`v0.1.8` → `v0.1.9` → `v0.1.10`...）
-
-### 8.2 Commit 訊息格式
-```
-v0.1.9 feat/fix/chore: 簡短描述
-
-- 詳細說明變更內容
-```
-
-### 8.3 PR 標題格式
-```
-v0.1.9 feat: 功能名稱
-```
-- **標題必須包含版本號**，例如：`v0.1.9 fix: 修正四足步態效果`
-
-### 8.4 執行順序
-1. 完成程式碼修改
-2. 遞增 `GameConfig.VERSION`（版本號 +1）
-3. `git commit -m "v0.1.X ..."`
-4. `git push`
-5. 建立或更新 PR，標題格式 `vX.X.X 描述`
-
-### 8.5 畫面版本顯示
-- `UIManager.lua` 的 `🐾 vX.X.X` 標籤從 `GameConfig.VERSION` 自動讀取
-- 玩家在遊戲畫面左下角可隨時確認當前版本
