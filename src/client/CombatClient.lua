@@ -786,6 +786,12 @@ local function playSwingAnimation(swingAngle: number, duration: number)
 			elbowPitch = 0.50 * (1 - ease)
 		end
 
+		-- 揮擊幅度加大 100%
+		pitch *= 5
+		yaw *= 5
+		roll *= 5
+		elbowPitch *= 5
+
 		-- 右手主攻擊，左手反向平衡，讓揮擊更容易被看見
 		shoulderR.C0 = shoulderRBaseC0 * CFrame.Angles(pitch, yaw, roll)
 		if shoulderL then
