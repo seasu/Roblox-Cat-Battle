@@ -590,34 +590,75 @@ local function endSwing()
 end
 
 -- ── 貓咪姿勢系統 ─────────────────────────────────────────────────
--- 待機：「鞋貓劍客」英雄站姿（右爪前伸、左臂側展、輕微呼吸）
--- 行走：C0 平滑還原至預設，讓 Roblox Animate 腳本正常接管步行動畫
+-- 待機：「鞋貓劍客」英雄站姿（右爪前伸、左臂側展、呼吸 Tween）
+-- 行走：TweenService 一次性還原 C0，讓 Roblox Animate 腳本接管
 -- 重點：修改 C0（不是 Transform）；Animator 只寫 Transform，兩者不衝突
 local function setupCatWalkTilt()
-	local currentConnection: RBXScriptConnection? = nil
+	local IDLE_ARM_R = CFrame.Angles(-0.30, 0.14, 0.20)
+	local IDLE_ARM_L = CFrame.Angles( 0.10, -0.12, -0.18)
+	local IDLE_LEG_R = CFrame.Angles(-0.14, 0, 0.06)
+	local IDLE_LEG_L = CFrame.Angles( 0.10, 0, -0.04)
 
-	-- 鞋貓劍客待機：各關節 C0 偏移目標值
-	local IDLE_ARM_R = CFrame.Angles(-0.30, 0.14, 0.20)   -- 右爪英雄前伸
-	local IDLE_ARM_L = CFrame.Angles( 0.10, -0.12, -0.18) -- 左臂自然側展
-	local IDLE_LEG_R = CFrame.Angles(-0.14, 0, 0.06)      -- 右腿微前（重心腿）
-	local IDLE_LEG_L = CFrame.Angles( 0.10, 0, -0.04)     -- 左腿微後（支撐腿）
+	local TWEEN_IDLE    = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local TWEEN_WALK    = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local BREATHE_INFO  = TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 	local function onCharacter(char: Model)
-		if currentConnection then currentConnection:Disconnect() end
-
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
-		local rootMotor: Motor6D? = nil
+
 		local armR: Motor6D? = nil
 		local armL: Motor6D? = nil
 		local legR: Motor6D? = nil
 		local legL: Motor6D? = nil
-		-- 各關節的原始 C0（未受 Animator 影響的骨骼綁定值）
+		local rootMotor: Motor6D? = nil
 		local armRC0def = CFrame.new()
 		local armLC0def = CFrame.new()
 		local legRC0def = CFrame.new()
 		local legLC0def = CFrame.new()
 
-		-- 延遲 0.2s 等骨骼完全載入後再抓取關節
+		local breatheThread: thread? = nil
+
+		local function stopBreathe()
+			if breatheThread then
+				task.cancel(breatheThread)
+				breatheThread = nil
+			end
+		end
+
+		local function startBreathe()
+			stopBreathe()
+			if not armR then return end
+			breatheThread = task.spawn(function()
+				while char.Parent do
+					local m = armR
+					if not m then break end
+					local up = TweenService:Create(m, BREATHE_INFO,
+						{C0 = armRC0def * (IDLE_ARM_R * CFrame.Angles(0.028, 0, 0))})
+					up:Play(); up.Completed:Wait()
+					local dn = TweenService:Create(m, BREATHE_INFO,
+						{C0 = armRC0def * IDLE_ARM_R})
+					dn:Play(); dn.Completed:Wait()
+				end
+			end)
+		end
+
+		local function applyIdlePose()
+			if armR then TweenService:Create(armR, TWEEN_IDLE, {C0 = armRC0def * IDLE_ARM_R}):Play() end
+			if armL then TweenService:Create(armL, TWEEN_IDLE, {C0 = armLC0def * IDLE_ARM_L}):Play() end
+			if legR then TweenService:Create(legR, TWEEN_IDLE, {C0 = legRC0def * IDLE_LEG_R}):Play() end
+			if legL then TweenService:Create(legL, TWEEN_IDLE, {C0 = legLC0def * IDLE_LEG_L}):Play() end
+			startBreathe()
+		end
+
+		local function applyWalkPose()
+			stopBreathe()
+			if armR then TweenService:Create(armR, TWEEN_WALK, {C0 = armRC0def}):Play() end
+			if armL then TweenService:Create(armL, TWEEN_WALK, {C0 = armLC0def}):Play() end
+			if legR then TweenService:Create(legR, TWEEN_WALK, {C0 = legRC0def}):Play() end
+			if legL then TweenService:Create(legL, TWEEN_WALK, {C0 = legLC0def}):Play() end
+		end
+
+		-- 延遲 0.2s 等骨骼完全載入後抓取關節，然後套用初始待機姿勢
 		task.spawn(function()
 			task.wait(0.20)
 			for _, m in ipairs(char:GetDescendants()) do
@@ -625,82 +666,51 @@ local function setupCatWalkTilt()
 				local mn  = m.Name
 				local p0n = m.Part0 and m.Part0.Name or ""
 				local p1n = m.Part1 and m.Part1.Name or ""
-
-				if p0n == "HumanoidRootPart" then
-					rootMotor = m
-				end
+				if p0n == "HumanoidRootPart" then rootMotor = m end
 				if not armR and (
 					(string.find(mn, "Right") and string.find(mn, "Shoulder")) or
 					(string.find(p1n, "Right") and (string.find(p1n, "UpperArm") or p1n == "Right Arm"))
-				) then
-					armR = m; armRC0def = m.C0
-				end
+				) then armR = m; armRC0def = m.C0 end
 				if not armL and (
 					(string.find(mn, "Left") and string.find(mn, "Shoulder")) or
 					(string.find(p1n, "Left") and (string.find(p1n, "UpperArm") or p1n == "Left Arm"))
-				) then
-					armL = m; armLC0def = m.C0
-				end
+				) then armL = m; armLC0def = m.C0 end
 				if not legR and (
 					(string.find(mn, "Right") and string.find(mn, "Hip")) or
 					(string.find(p1n, "Right") and (string.find(p1n, "UpperLeg") or p1n == "Right Leg"))
-				) then
-					legR = m; legRC0def = m.C0
-				end
+				) then legR = m; legRC0def = m.C0 end
 				if not legL and (
 					(string.find(mn, "Left") and string.find(mn, "Hip")) or
 					(string.find(p1n, "Left") and (string.find(p1n, "UpperLeg") or p1n == "Left Leg"))
-				) then
-					legL = m; legLC0def = m.C0
-				end
+				) then legL = m; legLC0def = m.C0 end
+			end
+			applyIdlePose()
+		end)
+
+		-- 狀態事件：Idle/Landed → 英雄 Pose，Running → 還原讓 Animate 接管
+		local stateConn = hum.StateChanged:Connect(function(_, new)
+			if new == Enum.HumanoidStateType.Running then
+				applyWalkPose()
+			elseif new == Enum.HumanoidStateType.Idle
+				or new == Enum.HumanoidStateType.Landed then
+				applyIdlePose()
 			end
 		end)
 
-		local lastTime = os.clock()
+		-- 軀幹傾斜（Heartbeat，3 行，不影響 Pose Tween）
 		local currentTilt = 0
-
-		currentConnection = RunService.RenderStepped:Connect(function()
-			if not char.Parent or not hum.Parent then
-				if currentConnection then currentConnection:Disconnect() end
-				return
-			end
+		local tiltConn = RunService.Heartbeat:Connect(function(dt: number)
 			if not rootMotor or not rootMotor.Parent then return end
-
-			local now = os.clock()
-			local dt  = math.min(now - lastTime, 0.05)
-			lastTime  = now
-
-			local isMoving = hum.MoveDirection.Magnitude > 0.1
-
-			-- 軀幹傾斜：移動時微前傾（維持擬人感），靜止時微後仰（英雄感）
-			local tiltTarget = isMoving and math.rad(5) or math.rad(-2)
+			local tiltTarget = hum.MoveDirection.Magnitude > 0.1 and math.rad(5) or math.rad(-2)
 			currentTilt = currentTilt + (tiltTarget - currentTilt) * math.min(dt * 16, 1)
 			rootMotor.Transform = CFrame.Angles(currentTilt, 0, 0)
+		end)
 
-			if isMoving then
-				-- 行走：C0 平滑還原至預設，讓 Animate 腳本完整接管步行動畫
-				if armR then armR.C0 = armR.C0:Lerp(armRC0def, 0.10) end
-				if armL then armL.C0 = armL.C0:Lerp(armLC0def, 0.10) end
-				if legR then legR.C0 = legR.C0:Lerp(legRC0def, 0.10) end
-				if legL then legL.C0 = legL.C0:Lerp(legLC0def, 0.10) end
-			else
-				-- 待機：「鞋貓劍客」英雄站姿 + 呼吸微動
-				local breathe = math.sin(now * 1.35) * 0.028
-				if armR then
-					armR.C0 = armR.C0:Lerp(
-						armRC0def * (IDLE_ARM_R * CFrame.Angles(breathe, 0, 0)), 0.055)
-				end
-				if armL then
-					armL.C0 = armL.C0:Lerp(
-						armLC0def * (IDLE_ARM_L * CFrame.Angles(-breathe * 0.6, 0, 0)), 0.055)
-				end
-				if legR then
-					legR.C0 = legR.C0:Lerp(legRC0def * IDLE_LEG_R, 0.055)
-				end
-				if legL then
-					legL.C0 = legL.C0:Lerp(legLC0def * IDLE_LEG_L, 0.055)
-				end
-			end
+		char.AncestryChanged:Connect(function()
+			if char.Parent then return end
+			stateConn:Disconnect()
+			tiltConn:Disconnect()
+			stopBreathe()
 		end)
 	end
 

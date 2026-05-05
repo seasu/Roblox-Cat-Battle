@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.3.0`
+> **Current Version:** `v0.3.1`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -25,6 +25,7 @@
 | 3D 商店攤位 | ✅ | ✅ | 出生點南方 3 棟建築，ProximityPrompt 觸發商城各 tab |
 | HP 顯示 / 自動回復 | ✅ | — | AlwaysOn + 每秒 +1 HP |
 | 視覺重做 Phase 2 | ✅ | ✅ | HUD 重排（金幣圖示/等級徽章）、卡片 UIStroke + 底板、鞋貓劍客待機 Pose (C0) |
+| 待機姿勢重構 | ✅ | — | setupCatWalkTilt 改用 StateChanged + TweenService，移除 RenderStepped 每幀 Lerp/sin |
 
 ---
 
