@@ -720,7 +720,7 @@ local function setupCatWalkTilt()
 		local stateConn = hum.StateChanged:Connect(function(_, new)
 			if new == Enum.HumanoidStateType.Running then
 				applyWalkPose()
-			elseif new == Enum.HumanoidStateType.Idle
+			elseif new == Enum.HumanoidStateType.None
 				or new == Enum.HumanoidStateType.Landed then
 				applyIdlePose()
 			end
