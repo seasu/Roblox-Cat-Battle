@@ -117,6 +117,8 @@ function CatAppearance.apply(player: Player, catId: string)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
+	print(string.format("[CatAppearance] 開始套用外觀：玩家=%s, 貓咪=%s", player.Name, catId))
+
 	local visualInfo = CatVisualData.cats[catId] or CatVisualData.cats.whiteCat
 	local appliedAnything = false
 
@@ -125,6 +127,7 @@ function CatAppearance.apply(player: Player, catId: string)
 
 	-- 2. 套用身體連身衣 (Layered Clothing / Accessory)
 	if visualInfo.baseSuitAssetId and visualInfo.baseSuitAssetId ~= "rbxassetid://0" then
+		print("[CatAppearance] 嘗試套用連身衣 ID:", visualInfo.baseSuitAssetId)
 		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
 			appliedAnything = true
 		end
@@ -134,23 +137,23 @@ function CatAppearance.apply(player: Player, catId: string)
 	local head = character:FindFirstChild("Head")
 	if head and visualInfo.headMeshId ~= "rbxassetid://0" then
 		local headSuccess = false
-		-- 如果 ID 長度超過 12 位，嘗試作為 Accessory 載入
 		local idStr = string.match(visualInfo.headMeshId, "%d+")
 		if idStr and #idStr >= 13 then 
+			print("[CatAppearance] 嘗試套用頭部配件 ID:", visualInfo.headMeshId)
 			if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
 				headSuccess = true
 				appliedAnything = true
 			end
 		end
 		
-		-- 如果 Accessory 載入失敗或原本就是短 ID，則使用 MeshPart 備案
 		if not headSuccess then
+			print("[CatAppearance] 套用頭部 Mesh 備案 ID:", visualInfo.headMeshId)
 			local catHead = createMeshPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
 			catHead.Parent = character
 			local w = Instance.new("Weld")
 			w.Part0 = head
 			w.Part1 = catHead
-			w.C0 = CFrame.new(0, -0.1, 0) -- 稍微向下修正位置
+			w.C0 = CFrame.new(0, -0.1, 0)
 			w.Parent = catHead
 			
 			local face = Instance.new("Decal")
@@ -158,20 +161,18 @@ function CatAppearance.apply(player: Player, catId: string)
 			face.Texture = visualInfo.faces.idle
 			face.Parent = catHead
 			appliedAnything = true
-			print("[CatAppearance] 使用 MeshPart 備案套用頭部")
 		end
 	end
 
 	-- 4. 套用尾巴 (MeshPart)
-	-- 支援 R15 (LowerTorso) 與 R6 (Torso)
 	local tailBase = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
 	if tailBase and visualInfo.tailMeshId ~= "rbxassetid://0" then
+		print("[CatAppearance] 套用尾巴 ID:", visualInfo.tailMeshId)
 		local catTail = createMeshPart("Tail", visualInfo.tailMeshId, visualInfo.headTextureId)
 		catTail.Parent = character
 		local w = Instance.new("Weld")
 		w.Part0 = tailBase
 		w.Part1 = catTail
-		-- 針對 R6/R15 稍微調整位置
 		local offset = (tailBase.Name == "Torso") and CFrame.new(0, -0.8, 0.4) or CFrame.new(0, -0.2, 0.4)
 		w.C0 = offset * CFrame.Angles(math.rad(-10), 0, 0)
 		w.Parent = catTail
@@ -180,11 +181,11 @@ function CatAppearance.apply(player: Player, catId: string)
 
 	-- 5. 根據是否成功套用新外觀，決定是否隱藏原始身體
 	if appliedAnything then
-		setBodyTransparency(character, 1)
+		print("[CatAppearance] 成功套用部分自訂外觀，隱藏原始身體 (Debug Alpha=0.7)")
+		setBodyTransparency(character, 0.7) -- 改為 0.7 方便除錯
 	else
-		-- 如果什麼都沒套用成功，則確保身體是可見的
+		print("[CatAppearance] 未能套用任何自訂外觀，保持原始身體可見")
 		setBodyTransparency(character, 0)
-		warn("[CatAppearance] 警告：未能套用任何自訂外觀組件，已恢復原始身體顯示")
 	end
 
 	-- 6. 顏色同步
