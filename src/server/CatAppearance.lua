@@ -78,13 +78,12 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 	if not assetIdNum then return false end
 
 	local success, model = pcall(function()
-		-- 注意：InsertService 需要資產擁有權或資產為公開
 		return InsertService:LoadAsset(assetIdNum)
 	end)
 
 	if success and model then
-		-- 優先尋找 Accessory
-		local accessory = model:FindFirstChildOfClass("Accessory")
+		-- 遞迴尋找 Accessory
+		local accessory = model:FindFirstChildOfClass("Accessory") or model:FindFirstChildOfClass("Accessory", true)
 		if accessory then
 			accessory.Name = accessoryName
 			humanoid:AddAccessory(accessory:Clone())
@@ -93,11 +92,42 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			return true
 		end
 		
-		-- 如果資產包內沒有 Accessory，嘗試直接找 MeshPart (有些資產可能是 Model 包裹的 Mesh)
-		local meshPart = model:FindFirstChildOfClass("MeshPart")
-		if meshPart then
-			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 不是 Accessory，嘗試作為 MeshPart 處理")
-			-- 此處暫不實作複雜的 MeshPart 手動焊接，因為 Suit 需要 WrapLayer
+		-- 如果資產包內沒有 Accessory，嘗試找 MeshPart 或 SpecialMesh 並轉換為配件備案
+		local meshPart = model:FindFirstChildOfClass("MeshPart", true)
+		local specialMesh = model:FindFirstChildOfClass("SpecialMesh", true)
+		
+		if meshPart or specialMesh then
+			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 不是 Accessory，嘗試建立虛擬配件備案")
+			local newAcc = Instance.new("Accessory")
+			newAcc.Name = accessoryName
+			
+			local handle = Instance.new("Part")
+			handle.Name = "Handle"
+			handle.Size = Vector3.new(1, 1, 1)
+			handle.Transparency = 0
+			handle.CanCollide = false
+			handle.Parent = newAcc
+			
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.FileMesh
+			if meshPart then
+				mesh.MeshId = meshPart.MeshId
+				mesh.TextureId = meshPart.TextureID
+			else
+				mesh.MeshId = specialMesh.MeshId
+				mesh.TextureId = specialMesh.TextureId
+				mesh.Scale = specialMesh.Scale
+			end
+			mesh.Parent = handle
+			
+			-- 建立預設 Attachment (假設是頭部)
+			local att = Instance.new("Attachment")
+			att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+			att.Parent = handle
+			
+			humanoid:AddAccessory(newAcc)
+			model:Destroy()
+			return true
 		end
 		
 		model:Destroy()

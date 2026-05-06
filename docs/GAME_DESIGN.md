@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.4.3`
+> **Current Version:** `v0.4.4`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -11,7 +11,7 @@
 |---|---|---|---|
 | 玩家資料 / DataStore | ✅ | — | DataStore.lua，指數退避重試 |
 | 貓咪選擇 | ✅ | ✅ | 商城貓咪 tab 已加入「切換使用」按鈕 |
-| 貓咪外觀（高質感 3D） | ✅ | ✅ | v0.4.3: 除錯模式開啟 (Alpha 0.7) + 強化日誌，追蹤套裝載入失敗原因 |
+| 貓咪外觀（高質感 3D） | ✅ | ✅ | v0.4.4: 強化資產遞迴搜尋 + Mesh 備案配件化，修復 Enum.Idle 錯誤 |
 | 等級 / 經驗值 | ✅ | ✅ | XP bar + 升級 toast |
 | 技能系統 | ✅ | ✅ | 技能列 Q/E/R/F，冷卻 overlay |
 | 基礎攻擊 / 點擊 NPC | ✅ | ✅ | CombatClient 射線偵測 |
@@ -22,7 +22,7 @@
 | NPC 生成 / AI | ✅ | — | 三種 NPC 類型，追逐 + 漫步 |
 | PvP 系統 | ✅ | ✅ | 新增 PvP 面板（列出線上玩家，可點擊發起挑戰） |
 | 地圖 / 場景 | ✅ | — | WorldSetup，3 區圍繞出生點 |
-| 3D 商店攤裝 | ✅ | ✅ | 出生點南方 3 棟建築，ProximityPrompt 觸發商城各 tab |
+| 3D 商店攤位 | ✅ | ✅ | 出生點南方 3 棟建築，ProximityPrompt 觸發商城各 tab |
 | HP 顯示 / 自動回復 | ✅ | — | AlwaysOn + 每秒 +1 HP |
 | 視覺重做 Phase 2 | ✅ | ✅ | HUD 重排（金幣圖示/等級徽章）、卡片 UIStroke + 底板、鞋貓劍客待機 Pose (C0) |
 | 待機姿勢重構 | ✅ | — | setupCatWalkTilt 改用 StateChanged + TweenService，移除 RenderStepped 每幀 Lerp/sin |
@@ -158,6 +158,13 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-06（v0.4.4）
+- **穩定性修復與相容性強化**：
+  - **資產加載最佳化**：針對資產包（Model）內部的 Accessory 改用遞迴搜尋（`true` 參數），解決部分資產因層級過深導致無法辨識的問題。
+  - **虛擬配件備案**：新增「自動轉換機制」，若資產不是 `Accessory` 而是 `MeshPart` 或 `SpecialMesh`，程式會自動建立一個虛擬配件並掛載對應的 `Attachment`，確保套裝（Suit）與頭套（Hood）一定能正確定位。
+  - **Enum 錯誤修復**：修正 `CombatClient.lua` 中錯誤引用 `Enum.HumanoidStateType.Idle` 的問題（應為 `None`）。
+  - **除錯日誌細化**：進一步強化載入過程的詳細日誌，追蹤每一個步驟的執行結果。
 
 ### 2026-05-06（v0.4.3）
 - **視覺除錯 (Visual Debugging)**：針對套裝不顯示的問題開啟除錯模式。
