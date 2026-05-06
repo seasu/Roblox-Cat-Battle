@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SkillData = require(ReplicatedStorage.Shared.SkillData)
-local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local SkillData = require(ReplicatedStorage:WaitForChild("Shared").SkillData)
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared").GameConfig)
 local DataStore = require(script.Parent.DataStore)
 
 local SkillManager = {}

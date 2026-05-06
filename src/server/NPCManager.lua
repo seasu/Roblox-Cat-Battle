@@ -2,8 +2,8 @@ local workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local NPCData = require(ReplicatedStorage.Shared.NPCData)
-local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local NPCData = require(ReplicatedStorage:WaitForChild("Shared").NPCData)
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared").GameConfig)
 
 local NPCManager = {}
 

@@ -2,7 +2,7 @@
 -- 核心外觀管理器：實作 R15 透明素體 + 高模 MeshPart 配件系統
 
 local CatAppearance = {}
-local CatVisualData = require(game:GetService("ReplicatedStorage").Shared.CatVisualData)
+local CatVisualData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared").CatVisualData)
 
 -- ──────────────────────────────────────────────────────────────────────
 -- 輔助工具
