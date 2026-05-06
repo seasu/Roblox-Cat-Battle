@@ -1,6 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared").GameConfig)
 
 local UIManager = require(script.Parent:WaitForChild("UIManager"))
 local CombatClient = require(script.Parent:WaitForChild("CombatClient"))
@@ -44,7 +44,7 @@ getEvent("LoadDataResponse").OnClientEvent:Connect(function(playerData: any)
 
 	-- 建立技能列順序對應
 	local slots: { string } = {}
-	local skillDefs = require(ReplicatedStorage.Shared.SkillData).skills
+	local skillDefs = require(ReplicatedStorage:WaitForChild("Shared").SkillData).skills
 	for skillId in pairs(playerData.unlockedSkills or {}) do
 		local skill = skillDefs[skillId]
 		if skill and not skill.isPassive then

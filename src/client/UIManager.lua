@@ -1,8 +1,8 @@
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SkillData = require(ReplicatedStorage.Shared.SkillData)
-local EquipmentData = require(ReplicatedStorage.Shared.EquipmentData)
-local CatData = require(ReplicatedStorage.Shared.CatData)
+local SkillData = require(ReplicatedStorage:WaitForChild("Shared").SkillData)
+local EquipmentData = require(ReplicatedStorage:WaitForChild("Shared").EquipmentData)
+local CatData = require(ReplicatedStorage:WaitForChild("Shared").CatData)
 
 local UIManager = {}
 
@@ -304,7 +304,7 @@ function UIManager.init(playerData: any)
 	lvCorner.Parent = levelLabel
 
 	-- 版本號（左下角，小字）
-	local gameVersion = require(ReplicatedStorage.Shared.GameConfig).VERSION
+	local gameVersion = require(ReplicatedStorage:WaitForChild("Shared").GameConfig).VERSION
 	local versionLabel = Instance.new("TextLabel")
 	versionLabel.Name = "VersionLabel"
 	versionLabel.Text = "🐾 " .. gameVersion
@@ -372,7 +372,7 @@ function UIManager.init(playerData: any)
 	if playerData then
 		cachedEquipment = playerData.equipment or {}
 		cachedFragments = playerData.catFragments or {}
-		local required = require(ReplicatedStorage.Shared.GameConfig).XP_TABLE[playerData.level]
+		local required = require(ReplicatedStorage:WaitForChild("Shared").GameConfig).XP_TABLE[playerData.level]
 		UIManager.updateXPBar(playerData.xp, required, playerData.level)
 		UIManager.updateCoinDisplay(playerData.coins)
 	end

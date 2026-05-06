@@ -1,8 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local EquipmentData = require(ReplicatedStorage.Shared.EquipmentData)
-local CatData = require(ReplicatedStorage.Shared.CatData)
+local EquipmentData = require(ReplicatedStorage:WaitForChild("Shared").EquipmentData)
+local CatData = require(ReplicatedStorage:WaitForChild("Shared").CatData)
 local DataStore = require(script.Parent.DataStore)
-local Types = require(ReplicatedStorage.Shared.Types)
+local Types = require(ReplicatedStorage:WaitForChild("Shared").Types)
 type CatStats = Types.CatStats
 
 local EquipmentManager = {}

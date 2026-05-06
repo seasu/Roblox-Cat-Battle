@@ -1,7 +1,7 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CatData = require(ReplicatedStorage.Shared.CatData)
-local EquipmentData = require(ReplicatedStorage.Shared.EquipmentData)
+local CatData = require(ReplicatedStorage:WaitForChild("Shared").CatData)
+local EquipmentData = require(ReplicatedStorage:WaitForChild("Shared").EquipmentData)
 local DataStore = require(script.Parent.DataStore)
 
 local ShopManager = {}

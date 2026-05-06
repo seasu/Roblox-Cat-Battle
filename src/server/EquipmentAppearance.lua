@@ -2,7 +2,7 @@
 -- 負責在高質感角色上套用裝備視覺資產 (MeshPart / Layered Clothing)
 
 local EquipmentAppearance = {}
-local EquipmentData = require(game:GetService("ReplicatedStorage").Shared.EquipmentData)
+local EquipmentData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared").EquipmentData)
 local InsertService = game:GetService("InsertService")
 
 -- 標記前綴，用於識別並清除舊裝備

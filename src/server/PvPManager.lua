@@ -1,6 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared").GameConfig)
 local DataStore = require(script.Parent.DataStore)
 
 local PvPManager = {}

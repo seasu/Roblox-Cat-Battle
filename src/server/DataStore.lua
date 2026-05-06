@@ -1,6 +1,6 @@
 local DataStoreService = game:GetService("DataStoreService")
-local GameConfig = require(game.ReplicatedStorage.Shared.GameConfig)
-local Types = require(game.ReplicatedStorage.Shared.Types)
+local GameConfig = require(game.ReplicatedStorage:WaitForChild("Shared").GameConfig)
+local Types = require(game.ReplicatedStorage:WaitForChild("Shared").Types)
 type PlayerData = Types.PlayerData
 
 local DataStore = {}

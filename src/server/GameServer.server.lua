@@ -127,7 +127,7 @@ end)
 
 -- ── 自動存檔 ────────────────────────────────────────────────────
 task.spawn(function()
-	local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+	local GameConfig = require(ReplicatedStorage:WaitForChild("Shared").GameConfig)
 	while true do
 		task.wait(GameConfig.AUTOSAVE_INTERVAL)
 		for _, player in ipairs(Players:GetPlayers()) do
