@@ -24,13 +24,28 @@ end
 
 local function setBodyTransparency(character: Model, transparency: number)
 	for _, child in ipairs(character:GetDescendants()) do
+		-- 只針對原始身體部位進行透明度設定
+		-- 排除 HumanoidRootPart、排除我們剛加入的 Cat 字頭部位、排除配件中的 Handle
 		if child:IsA("BasePart") then
-			if child.Name ~= "HumanoidRootPart" then
+			local isOriginalBody = true
+			if child.Name == "HumanoidRootPart" then
+				isOriginalBody = false
+			elseif string.sub(child.Name, 1, 3) == "Cat" then
+				isOriginalBody = false
+			elseif child:FindFirstAncestorOfClass("Accessory") then
+				isOriginalBody = false
+			end
+			
+			if isOriginalBody then
 				child.Transparency = transparency
 			end
 		end
+		
 		if child:IsA("Decal") then
-			child.Transparency = transparency
+			-- 排除自訂頭部上的表情 Decal
+			if child.Name ~= "DynamicFace" then
+				child.Transparency = transparency
+			end
 		end
 	end
 end
@@ -46,13 +61,13 @@ local function createMeshPart(name: string, meshId: string, textureId: string): 
 	return mp
 end
 
-local function applyAccessory(character: Model, assetId: string, accessoryName: string)
-	if not assetId or assetId == "rbxassetid://0" then return end
+local function applyAccessory(character: Model, assetId: string, accessoryName: string): boolean
+	if not assetId or assetId == "rbxassetid://0" then return false end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+	if not humanoid then return false end
 
 	local assetIdNum = tonumber(string.match(assetId, "%d+"))
-	if not assetIdNum then return end
+	if not assetIdNum then return false end
 
 	local success, model = pcall(function()
 		-- 注意：InsertService 需要資產擁有權或資產為公開
@@ -65,6 +80,8 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			accessory.Name = accessoryName
 			humanoid:AddAccessory(accessory:Clone())
 			print("[CatAppearance] 成功套用配件：", accessoryName, "ID:", assetIdNum)
+			model:Destroy()
+			return true
 		else
 			warn("[CatAppearance] 資產內找不到 Accessory 物件：", assetIdNum)
 		end
@@ -72,6 +89,7 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 	else
 		warn("[CatAppearance] 配件載入失敗 ID:", assetIdNum, "錯誤:", tostring(model))
 	end
+	return false
 end
 
 -- ──────────────────────────────────────────────────────────────────────
@@ -85,14 +103,16 @@ function CatAppearance.apply(player: Player, catId: string)
 	if not humanoid then return end
 
 	local visualInfo = CatVisualData.cats[catId] or CatVisualData.cats.whiteCat
+	local appliedAnything = false
 
-	-- 1. 清理與隱藏素體
+	-- 1. 清理舊視覺
 	clearOldVisuals(character)
-	setBodyTransparency(character, 1)
 
 	-- 2. 套用身體連身衣 (Layered Clothing / Accessory)
 	if visualInfo.baseSuitAssetId then
-		applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit")
+		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
+			appliedAnything = true
+		end
 	end
 
 	-- 3. 套用頭部 (判斷是 Accessory 還是純 Mesh)
@@ -101,7 +121,9 @@ function CatAppearance.apply(player: Player, catId: string)
 		-- 如果 ID 長度超過 12 位，通常是較新的 Accessory 資產 (針對白貓 Pro 版)
 		local idStr = string.match(visualInfo.headMeshId, "%d+")
 		if idStr and #idStr >= 13 then 
-			applyAccessory(character, visualInfo.headMeshId, "CatHood")
+			if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
+				appliedAnything = true
+			end
 		else
 			-- 如果是短 ID，視為純 MeshPart (舊版或通用版)
 			local catHead = createMeshPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
@@ -116,6 +138,7 @@ function CatAppearance.apply(player: Player, catId: string)
 			face.Name = "DynamicFace"
 			face.Texture = visualInfo.faces.idle
 			face.Parent = catHead
+			appliedAnything = true
 		end
 	end
 
@@ -129,12 +152,24 @@ function CatAppearance.apply(player: Player, catId: string)
 		w.Part1 = catTail
 		w.C0 = CFrame.new(0, -0.2, 0.4) * CFrame.Angles(math.rad(-10), 0, 0)
 		w.Parent = catTail
+		appliedAnything = true
 	end
 
-	-- 5. 顏色同步 (針對粒子與 UI 背景)
-	for _, part in ipairs(character:GetChildren()) do
+	-- 5. 根據是否成功套用新外觀，決定是否隱藏原始身體
+	if appliedAnything then
+		setBodyTransparency(character, 1)
+	else
+		-- 如果什麼都沒套用成功，則確保身體是可見的（防止變成隱形人）
+		setBodyTransparency(character, 0)
+	end
+
+	-- 6. 顏色同步 (確保原始部位也有顏色，即使是備案顯示)
+	for _, part in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
-			part.Color = visualInfo.baseColor
+			-- 不要染黑 HumanoidRootPart
+			if part.Name ~= "HumanoidRootPart" then
+				part.Color = visualInfo.baseColor
+			end
 		end
 	end
 end
