@@ -369,24 +369,25 @@ local function makeSound(id: string, vol: number): Sound
 end
 
 local SFX = {
-	-- 揮擊（Sword Slash）：Roblox Gear 內建，ID 62337944
-	attack = makeSound("rbxassetid://62337944", 0.8),
-	-- 命中（Hit）：Roblox Gear 內建，ID 93016098
-	hit    = makeSound("rbxassetid://93016098", 1.0),
-	-- 受傷（同命中，音量較低）
-	hurt   = makeSound("rbxassetid://93016098", 0.6),
-	-- 金幣（Sparkle）：ID 4612355301
-	coin   = makeSound("rbxassetid://4612355301", 0.9),
-	-- 魔法（同金幣）
-	magic  = makeSound("rbxassetid://4612355301", 0.8),
+	-- 揮擊 (Slash): ID 12222216
+	attack = makeSound("rbxassetid://12222216", 0.8),
+	-- 命中 (Hit): ID 566593606
+	hit    = makeSound("rbxassetid://566593606", 1.0),
+	-- 受傷 (Hurt): 同命中
+	hurt   = makeSound("rbxassetid://566593606", 0.6),
+	-- 金幣 (Sparkle): ID 338587115
+	coin   = makeSound("rbxassetid://338587115", 0.9),
+	-- 魔法 (Magic): ID 157511567
+	magic  = makeSound("rbxassetid://157511567", 0.8),
 }
 
 -- 預載確保首次使用時無延遲
 task.spawn(function()
 	pcall(ContentProvider.PreloadAsync, ContentProvider, {
-		"rbxassetid://62337944",
-		"rbxassetid://93016098",
-		"rbxassetid://4612355301",
+		"rbxassetid://12222216",
+		"rbxassetid://566593606",
+		"rbxassetid://338587115",
+		"rbxassetid://157511567",
 	})
 end)
 
