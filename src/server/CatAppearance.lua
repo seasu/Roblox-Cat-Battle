@@ -1,5 +1,5 @@
 -- CatAppearance.lua
--- 核心外觀管理器：實作 R15 透明素體 + 高模 MeshPart 配件系統
+-- 核心外觀管理器：實作 R15/R6 透明素體 + 高模 SpecialMesh 配件系統
 
 local CatAppearance = {}
 local CatVisualData = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared").CatVisualData)
@@ -8,6 +8,14 @@ local InsertService = game:GetService("InsertService")
 -- ──────────────────────────────────────────────────────────────────────
 -- 輔助工具
 -- ──────────────────────────────────────────────────────────────────────
+
+local BODY_PART_NAMES = {
+	"Head", "UpperTorso", "LowerTorso", "Torso",
+	"LeftUpperArm", "LeftLowerArm", "LeftHand", "Left Arm",
+	"RightUpperArm", "RightLowerArm", "RightHand", "Right Arm",
+	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "Left Leg",
+	"RightUpperLeg", "RightLowerLeg", "RightFoot", "Right Leg"
+}
 
 local function clearOldVisuals(character: Model)
 	-- 清除舊有的自訂 Part (以 Cat 開頭的)
@@ -23,42 +31,36 @@ local function clearOldVisuals(character: Model)
 end
 
 local function setBodyTransparency(character: Model, transparency: number)
+	local partMap = {}
+	for _, name in ipairs(BODY_PART_NAMES) do
+		partMap[name] = true
+	end
+
 	for _, child in ipairs(character:GetDescendants()) do
-		-- 只針對原始身體部位進行透明度設定
-		-- 排除 HumanoidRootPart、排除我們剛加入的 Cat 字頭部位、排除配件中的 Handle
 		if child:IsA("BasePart") then
-			local isOriginalBody = true
-			if child.Name == "HumanoidRootPart" then
-				isOriginalBody = false
-			elseif string.sub(child.Name, 1, 3) == "Cat" then
-				isOriginalBody = false
-			elseif child:FindFirstAncestorOfClass("Accessory") then
-				isOriginalBody = false
-			end
-			
-			if isOriginalBody then
+			-- 只隱藏標準身體部位，且排除所有 Accessory 內部的 Handle
+			if partMap[child.Name] and not child:FindFirstAncestorOfClass("Accessory") then
 				child.Transparency = transparency
 			end
 		end
 		
-		if child:IsA("Decal") then
-			-- 排除自訂頭部上的表情 Decal
-			if child.Name ~= "DynamicFace" then
+		if child:IsA("Decal") and child.Name ~= "DynamicFace" then
+			local parent = child.Parent
+			if parent and partMap[parent.Name] then
 				child.Transparency = transparency
 			end
 		end
 	end
 end
 
-local function createMeshPart(name: string, meshId: string, textureId: string): BasePart
-	-- 使用 Part + SpecialMesh，因為在執行階段透過腳本建立 MeshPart 並設定 MeshId 有時會失效或不渲染
+local function createVisualPart(name: string, meshId: string, textureId: string): BasePart
 	local p = Instance.new("Part")
 	p.Name = "Cat" .. name
 	p.CanCollide = false
 	p.CastShadow = true
 	p.Anchored = false
 	p.Transparency = 0
-	p.Size = Vector3.new(1, 1, 1) -- 初始大小，視覺由 Mesh 縮放決定
+	p.Size = Vector3.new(1, 1, 1)
 	
 	local sm = Instance.new("SpecialMesh")
 	sm.MeshType = Enum.MeshType.FileMesh
@@ -70,7 +72,7 @@ local function createMeshPart(name: string, meshId: string, textureId: string): 
 end
 
 local function applyAccessory(character: Model, assetId: string, accessoryName: string): boolean
-	if not assetId or assetId == "rbxassetid://0" then return false end
+	if not assetId or assetId == "rbxassetid://0" or assetId == "" then return false end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return false end
 
@@ -82,22 +84,20 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 	end)
 
 	if success and model then
-		-- 遞迴尋找 Accessory
+		-- 1. 優先尋找資產包內的 Accessory
 		local accessory = model:FindFirstChildOfClass("Accessory") or model:FindFirstChildOfClass("Accessory", true)
 		if accessory then
 			accessory.Name = accessoryName
 			humanoid:AddAccessory(accessory:Clone())
-			print("[CatAppearance] 成功套用配件：", accessoryName, "ID:", assetIdNum)
+			print("[CatAppearance] 成功套用 Accessory 資產：", accessoryName)
 			model:Destroy()
 			return true
 		end
 		
-		-- 如果資產包內沒有 Accessory，嘗試找 MeshPart 或 SpecialMesh 並轉換為配件備案
-		local meshPart = model:FindFirstChildOfClass("MeshPart", true)
-		local specialMesh = model:FindFirstChildOfClass("SpecialMesh", true)
-		
-		if meshPart or specialMesh then
-			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 不是 Accessory，嘗試建立虛擬配件備案")
+		-- 2. 備案：若資產包內是 MeshPart 或 SpecialMesh，將其配件化
+		local foundMesh = model:FindFirstChildOfClass("MeshPart", true) or model:FindFirstChildOfClass("SpecialMesh", true)
+		if foundMesh then
+			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 非 Accessory，執行自動配件化...")
 			local newAcc = Instance.new("Accessory")
 			newAcc.Name = accessoryName
 			
@@ -110,29 +110,29 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.FileMesh
-			if meshPart then
-				mesh.MeshId = meshPart.MeshId
-				mesh.TextureId = meshPart.TextureID
+			if foundMesh:IsA("MeshPart") then
+				mesh.MeshId = foundMesh.MeshId
+				mesh.TextureId = foundMesh.TextureID
 			else
-				mesh.MeshId = specialMesh.MeshId
-				mesh.TextureId = specialMesh.TextureId
-				mesh.Scale = specialMesh.Scale
+				mesh.MeshId = foundMesh.MeshId
+				mesh.TextureId = foundMesh.TextureId
+				mesh.Scale = foundMesh.Scale
 			end
 			mesh.Parent = handle
 			
-			-- 建立預設 Attachment (假設是頭部)
+			-- 依據名稱設定掛載點
 			local att = Instance.new("Attachment")
 			att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
 			att.Parent = handle
 			
 			humanoid:AddAccessory(newAcc)
+			print("[CatAppearance] 成功轉換並套用虛擬配件：", accessoryName)
 			model:Destroy()
 			return true
 		end
-		
 		model:Destroy()
 	else
-		warn("[CatAppearance] 配件載入失敗 ID:", assetIdNum, "錯誤:", tostring(model))
+		warn("[CatAppearance] 資產載入失敗 ID:", assetIdNum)
 	end
 	return false
 end
@@ -147,29 +147,27 @@ function CatAppearance.apply(player: Player, catId: string)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	print(string.format("[CatAppearance] 開始套用外觀：玩家=%s, 貓咪=%s", player.Name, catId))
+	print(string.format("[CatAppearance] === 開始套用外觀：玩家=%s, 貓咪=%s ===", player.Name, catId))
 
 	local visualInfo = CatVisualData.cats[catId] or CatVisualData.cats.whiteCat
 	local appliedAnything = false
 
-	-- 1. 清理舊視覺
+	-- 1. 清理
 	clearOldVisuals(character)
 
-	-- 2. 套用身體連身衣 (Layered Clothing / Accessory)
+	-- 2. 套用 Suit (連身衣)
 	if visualInfo.baseSuitAssetId and visualInfo.baseSuitAssetId ~= "rbxassetid://0" then
-		print("[CatAppearance] 嘗試套用連身衣 ID:", visualInfo.baseSuitAssetId)
 		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
 			appliedAnything = true
 		end
 	end
 
-	-- 3. 套用頭部 (判斷是 Accessory 還是純 Mesh)
+	-- 3. 套用 Head / Hood (頭部)
 	local head = character:FindFirstChild("Head")
 	if head and visualInfo.headMeshId ~= "rbxassetid://0" then
 		local headSuccess = false
 		local idStr = string.match(visualInfo.headMeshId, "%d+")
 		if idStr and #idStr >= 13 then 
-			print("[CatAppearance] 嘗試套用頭部配件 ID:", visualInfo.headMeshId)
 			if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
 				headSuccess = true
 				appliedAnything = true
@@ -177,8 +175,8 @@ function CatAppearance.apply(player: Player, catId: string)
 		end
 		
 		if not headSuccess then
-			print("[CatAppearance] 套用頭部 Mesh 備案 ID:", visualInfo.headMeshId)
-			local catHead = createMeshPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
+			print("[CatAppearance] 使用 Mesh 模式套用頭部...")
+			local catHead = createVisualPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
 			catHead.Parent = character
 			local w = Instance.new("Weld")
 			w.Part0 = head
@@ -194,11 +192,11 @@ function CatAppearance.apply(player: Player, catId: string)
 		end
 	end
 
-	-- 4. 套用尾巴 (MeshPart)
+	-- 4. 套用 Tail (尾巴)
 	local tailBase = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
 	if tailBase and visualInfo.tailMeshId ~= "rbxassetid://0" then
-		print("[CatAppearance] 套用尾巴 ID:", visualInfo.tailMeshId)
-		local catTail = createMeshPart("Tail", visualInfo.tailMeshId, visualInfo.headTextureId)
+		print("[CatAppearance] 套用尾巴視覺...")
+		local catTail = createVisualPart("Tail", visualInfo.tailMeshId, visualInfo.headTextureId)
 		catTail.Parent = character
 		local w = Instance.new("Weld")
 		w.Part0 = tailBase
@@ -209,12 +207,12 @@ function CatAppearance.apply(player: Player, catId: string)
 		appliedAnything = true
 	end
 
-	-- 5. 根據是否成功套用新外觀，決定是否隱藏原始身體
+	-- 5. 透明度設定 (偵錯用 0.7)
 	if appliedAnything then
-		print("[CatAppearance] 成功套用部分自訂外觀，隱藏原始身體 (Debug Alpha=0.7)")
-		setBodyTransparency(character, 0.7) -- 改為 0.7 方便除錯
+		print("[CatAppearance] 套用成功，隱藏原始身體 (Alpha 0.7)")
+		setBodyTransparency(character, 0.7)
 	else
-		print("[CatAppearance] 未能套用任何自訂外觀，保持原始身體可見")
+		warn("[CatAppearance] 未能套用任何自訂組件，保持原始身體顯示")
 		setBodyTransparency(character, 0)
 	end
 
@@ -226,6 +224,8 @@ function CatAppearance.apply(player: Player, catId: string)
 			end
 		end
 	end
+	
+	print("[CatAppearance] === 外觀套用完成 ===")
 end
 
 return CatAppearance
