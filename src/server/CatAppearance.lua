@@ -122,7 +122,13 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			
 			-- 依據名稱設定掛載點
 			local att = Instance.new("Attachment")
-			att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+			if accessoryName == "CatHood" then
+				att.Name = "HatAttachment"
+			elseif accessoryName == "CatTail" then
+				att.Name = "WaistCenterAttachment" -- 尾巴通常掛在腰部中心
+			else
+				att.Name = "BodyFrontAttachment" -- 預設為連身衣 (Suit) 的掛載點
+			end
 			att.Parent = handle
 			
 			humanoid:AddAccessory(newAcc)
@@ -143,9 +149,15 @@ end
 
 function CatAppearance.apply(player: Player, catId: string)
 	local character = player.Character
-	if not character then return end
+	if not character then 
+		warn("[CatAppearance] 找不到玩家 Character:", player.Name)
+		return 
+	end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+	if not humanoid then 
+		warn("[CatAppearance] 找不到 Humanoid:", player.Name)
+		return 
+	end
 
 	print(string.format("[CatAppearance] === 開始套用外觀：玩家=%s, 貓咪=%s ===", player.Name, catId))
 
@@ -157,62 +169,102 @@ function CatAppearance.apply(player: Player, catId: string)
 
 	-- 2. 套用 Suit (連身衣)
 	if visualInfo.baseSuitAssetId and visualInfo.baseSuitAssetId ~= "rbxassetid://0" then
+		print("[CatAppearance] 嘗試套用 Suit:", visualInfo.baseSuitAssetId)
 		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
 			appliedAnything = true
+			print("[CatAppearance] Suit 套用成功")
+		else
+			warn("[CatAppearance] Suit 套用失敗")
 		end
 	end
 
 	-- 3. 套用 Head / Hood (頭部)
 	local head = character:FindFirstChild("Head")
 	if head and visualInfo.headMeshId ~= "rbxassetid://0" then
+		print("[CatAppearance] 嘗試套用 Head/Hood:", visualInfo.headMeshId)
 		local headSuccess = false
 		local idStr = string.match(visualInfo.headMeshId, "%d+")
-		if idStr and #idStr >= 13 then 
+		
+		-- 如果是長 ID (通常是 UGC/Accessory)，優先嘗試 Accessory 模式
+		if idStr and #idStr >= 9 then 
+			print("[CatAppearance] 檢測到長 ID，優先嘗試 Accessory 模式...")
 			if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
 				headSuccess = true
 				appliedAnything = true
+				print("[CatAppearance] Head/Hood 以 Accessory 模式套用成功")
 			end
 		end
 		
 		if not headSuccess then
 			print("[CatAppearance] 使用 Mesh 模式套用頭部...")
-			local catHead = createVisualPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
-			catHead.Parent = character
-			local w = Instance.new("Weld")
-			w.Part0 = head
-			w.Part1 = catHead
-			w.C0 = CFrame.new(0, -0.1, 0)
-			w.Parent = catHead
-			
-			local face = Instance.new("Decal")
-			face.Name = "DynamicFace"
-			face.Texture = visualInfo.faces.idle
-			face.Parent = catHead
-			appliedAnything = true
+			local ok, err = pcall(function()
+				local catHead = createVisualPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
+				catHead.Parent = character
+				local w = Instance.new("Weld")
+				w.Part0 = head
+				w.Part1 = catHead
+				w.C0 = CFrame.new(0, -0.1, 0)
+				w.Parent = catHead
+				
+				local face = Instance.new("Decal")
+				face.Name = "DynamicFace"
+				face.Texture = visualInfo.faces.idle
+				face.Parent = catHead
+			end)
+			if ok then
+				headSuccess = true
+				appliedAnything = true
+				print("[CatAppearance] Head 以 Mesh 模式套用成功")
+			else
+				warn("[CatAppearance] Head Mesh 模式報錯:", err)
+			end
 		end
 	end
 
 	-- 4. 套用 Tail (尾巴)
 	local tailBase = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
 	if tailBase and visualInfo.tailMeshId ~= "rbxassetid://0" then
-		print("[CatAppearance] 套用尾巴視覺...")
-		local catTail = createVisualPart("Tail", visualInfo.tailMeshId, visualInfo.headTextureId)
-		catTail.Parent = character
-		local w = Instance.new("Weld")
-		w.Part0 = tailBase
-		w.Part1 = catTail
-		local offset = (tailBase.Name == "Torso") and CFrame.new(0, -0.8, 0.4) or CFrame.new(0, -0.2, 0.4)
-		w.C0 = offset * CFrame.Angles(math.rad(-10), 0, 0)
-		w.Parent = catTail
-		appliedAnything = true
+		print("[CatAppearance] 嘗試套用 Tail:", visualInfo.tailMeshId)
+		local tailSuccess = false
+		local idStr = string.match(visualInfo.tailMeshId, "%d+")
+		
+		if idStr and #idStr >= 9 then
+			print("[CatAppearance] 檢測到長 ID，優先嘗試 Accessory 模式...")
+			if applyAccessory(character, visualInfo.tailMeshId, "CatTail") then
+				tailSuccess = true
+				appliedAnything = true
+				print("[CatAppearance] Tail 以 Accessory 模式套用成功")
+			end
+		end
+
+		if not tailSuccess then
+			print("[CatAppearance] 使用 Mesh 模式套用尾巴...")
+			local ok, err = pcall(function()
+				local catTail = createVisualPart("Tail", visualInfo.tailMeshId, visualInfo.headTextureId)
+				catTail.Parent = character
+				local w = Instance.new("Weld")
+				w.Part0 = tailBase
+				w.Part1 = catTail
+				local offset = (tailBase.Name == "Torso") and CFrame.new(0, -0.8, 0.4) or CFrame.new(0, -0.2, 0.4)
+				w.C0 = offset * CFrame.Angles(math.rad(-10), 0, 0)
+				w.Parent = catTail
+			end)
+			if ok then
+				tailSuccess = true
+				appliedAnything = true
+				print("[CatAppearance] Tail 以 Mesh 模式套用成功")
+			else
+				warn("[CatAppearance] Tail Mesh 模式報錯:", err)
+			end
+		end
 	end
 
-	-- 5. 透明度設定 (偵錯用 0.7)
+	-- 5. 透明度設定 (偵錯用 0.5，讓我們看清楚發生什麼事)
 	if appliedAnything then
-		print("[CatAppearance] 套用成功，隱藏原始身體 (Alpha 0.7)")
-		setBodyTransparency(character, 0.7)
+		print("[CatAppearance] 有組件成功套用，設定原始身體透明度為 0.5")
+		setBodyTransparency(character, 0.5)
 	else
-		warn("[CatAppearance] 未能套用任何自訂組件，保持原始身體顯示")
+		warn("[CatAppearance] 完全沒有組件被套用！保持原始身體顯示")
 		setBodyTransparency(character, 0)
 	end
 

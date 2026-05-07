@@ -255,9 +255,9 @@ local function buildWildCatModel(def, instanceId, spawnPos, s, colors)
 		colors.main, true)
 	model.PrimaryPart = body
 
-	-- 3D 頭部（使用 Generic Cat Head Mesh）
+	-- 3D 頭部（使用公開可靠的 Cat Head Mesh 1635970808）
 	am(model, "Head",
-		"rbxassetid://74852812713110",
+		"rbxassetid://1635970808",
 		Vector3.new(2.2*s, 2.2*s, 2.2*s),
 		Vector3.new(X, Y + 2.8*s, Z - 1.2*s),
 		colors.main, false)
@@ -302,9 +302,9 @@ local function buildWildHumanModel(def, instanceId, spawnPos, s, colors)
 		colors.main, true)
 	model.PrimaryPart = body
 
-	-- 3D 頭部帽（帶貓耳的頭部）
+	-- 3D 頭部帽（帶貓耳的頭部，使用公開 ID 1635970808）
 	am(model, "Head",
-		"rbxassetid://74852812713110",
+		"rbxassetid://1635970808",
 		Vector3.new(2.4*s, 2.4*s, 2.4*s),
 		Vector3.new(X, Y + 4.2*s, Z),
 		colors.accent, false)

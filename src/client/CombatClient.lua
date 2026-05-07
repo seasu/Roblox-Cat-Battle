@@ -369,25 +369,25 @@ local function makeSound(id: string, vol: number): Sound
 end
 
 local SFX = {
-	-- 揮擊 (Slash): ID 12222216
-	attack = makeSound("rbxassetid://12222216", 0.8),
-	-- 命中 (Hit): ID 566593606
-	hit    = makeSound("rbxassetid://566593606", 1.0),
+	-- 揮擊 (Slash): 使用更現代的公開 ID 935843979
+	attack = makeSound("rbxassetid://935843979", 0.8),
+	-- 命中 (Hit): 使用 7171761940
+	hit    = makeSound("rbxassetid://7171761940", 1.0),
 	-- 受傷 (Hurt): 同命中
-	hurt   = makeSound("rbxassetid://566593606", 0.6),
-	-- 金幣 (Sparkle): ID 338587115
-	coin   = makeSound("rbxassetid://338587115", 0.9),
-	-- 魔法 (Magic): ID 157511567
-	magic  = makeSound("rbxassetid://157511567", 0.8),
+	hurt   = makeSound("rbxassetid://7171761940", 0.6),
+	-- 金幣 (Coin): 使用 1169755927
+	coin   = makeSound("rbxassetid://1169755927", 0.9),
+	-- 魔法 (Magic): 使用 138208170
+	magic  = makeSound("rbxassetid://138208170", 0.8),
 }
 
 -- 預載確保首次使用時無延遲
 task.spawn(function()
 	pcall(ContentProvider.PreloadAsync, ContentProvider, {
-		"rbxassetid://12222216",
-		"rbxassetid://566593606",
-		"rbxassetid://338587115",
-		"rbxassetid://157511567",
+		"rbxassetid://935843979",
+		"rbxassetid://7171761940",
+		"rbxassetid://1169755927",
+		"rbxassetid://138208170",
 	})
 end)
 

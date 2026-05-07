@@ -21,9 +21,9 @@ CatVisualData.cats = {
 		name = "白貓",
 		baseColor = Color3.fromRGB(255, 255, 255),
 		baseSuitAssetId = "rbxassetid://91532946724584",
-		headMeshId = "rbxassetid://110516593277125",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808", -- 還原為可靠 Mesh ID 模式
 		-- 支援動態表情切換
 		faces = {
 			idle = PLACEHOLDER_TEX,
@@ -34,65 +34,65 @@ CatVisualData.cats = {
 	shadowCat = {
 		name = "暗影貓",
 		baseColor = Color3.fromRGB(50, 50, 70),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	flameCat = {
 		name = "烈焰貓",
 		baseColor = Color3.fromRGB(255, 80, 0),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	frostCat = {
 		name = "冰霜貓",
 		baseColor = Color3.fromRGB(180, 230, 255),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	thunderCat = {
 		name = "雷霆貓",
 		baseColor = Color3.fromRGB(255, 240, 100),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	sakuraCat = {
 		name = "櫻花貓",
 		baseColor = Color3.fromRGB(255, 200, 220),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	orangeCat = {
 		name = "橘貓",
 		baseColor = Color3.fromRGB(255, 160, 60),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	calicoCat = {
 		name = "三花貓",
 		baseColor = Color3.fromRGB(240, 220, 200),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 	tuxedoCat = {
 		name = "賓士貓",
 		baseColor = Color3.fromRGB(30, 30, 30),
-		headMeshId = "rbxassetid://74852812713110",
+		headMeshId = "rbxassetid://1635970808",
 		headTextureId = PLACEHOLDER_TEX,
-		tailMeshId = "rbxassetid://96597653505917",
+		tailMeshId = "rbxassetid://1635970808",
 		faces = { idle = PLACEHOLDER_TEX, combat = PLACEHOLDER_TEX }
 	},
 }
