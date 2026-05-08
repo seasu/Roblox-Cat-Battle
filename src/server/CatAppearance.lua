@@ -79,6 +79,8 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 	local assetIdNum = tonumber(string.match(assetId, "%d+"))
 	if not assetIdNum then return false end
 
+	print("[CatAppearance] 嘗試載入資產 ID:", assetIdNum, "型態:", accessoryName)
+
 	local success, model = pcall(function()
 		return InsertService:LoadAsset(assetIdNum)
 	end)
@@ -89,7 +91,7 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 		if accessory then
 			accessory.Name = accessoryName
 			humanoid:AddAccessory(accessory:Clone())
-			print("[CatAppearance] 成功套用 Accessory 資產：", accessoryName)
+			print("[CatAppearance] 成功從資產包套用 Accessory：", accessoryName)
 			model:Destroy()
 			return true
 		end
@@ -97,7 +99,7 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 		-- 2. 備案：若資產包內是 MeshPart 或 SpecialMesh，將其配件化
 		local foundMesh = model:FindFirstChildOfClass("MeshPart", true) or model:FindFirstChildOfClass("SpecialMesh", true)
 		if foundMesh then
-			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 非 Accessory，執行自動配件化...")
+			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 內部無 Accessory，執行自動轉換...")
 			local newAcc = Instance.new("Accessory")
 			newAcc.Name = accessoryName
 			
@@ -126,13 +128,39 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			att.Parent = handle
 			
 			humanoid:AddAccessory(newAcc)
-			print("[CatAppearance] 成功轉換並套用虛擬配件：", accessoryName)
+			print("[CatAppearance] 成功將資產包內容轉換為配件：", accessoryName)
 			model:Destroy()
 			return true
 		end
 		model:Destroy()
 	else
-		warn("[CatAppearance] 資產載入失敗 ID:", assetIdNum)
+		-- 3. 終極備案：如果 LoadAsset 失敗（通常是因為這是原始 Mesh ID 而非 Model ID）
+		-- 直接嘗試建立一個使用該 ID 的配件
+		warn("[CatAppearance] LoadAsset 失敗，嘗試以原始 Mesh ID 模式建立配件: ", assetId)
+		
+		local newAcc = Instance.new("Accessory")
+		newAcc.Name = accessoryName
+		
+		local handle = Instance.new("Part")
+		handle.Name = "Handle"
+		handle.Size = Vector3.new(1, 1, 1)
+		handle.Transparency = 0
+		handle.CanCollide = false
+		handle.Parent = newAcc
+		
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.FileMesh
+		mesh.MeshId = assetId
+		-- 嘗試抓取同配置中的 TextureId (如果是 Hood)
+		mesh.Parent = handle
+		
+		local att = Instance.new("Attachment")
+		att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+		att.Parent = handle
+		
+		humanoid:AddAccessory(newAcc)
+		print("[CatAppearance] 已透過原始 Mesh ID 強制建立配件：", accessoryName)
+		return true
 	end
 	return false
 end
@@ -159,23 +187,19 @@ function CatAppearance.apply(player: Player, catId: string)
 	if visualInfo.baseSuitAssetId and visualInfo.baseSuitAssetId ~= "rbxassetid://0" then
 		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
 			appliedAnything = true
+		else
+			warn("[CatAppearance] Suit 套用失敗")
 		end
 	end
 
 	-- 3. 套用 Head / Hood (頭部)
 	local head = character:FindFirstChild("Head")
 	if head and visualInfo.headMeshId ~= "rbxassetid://0" then
-		local headSuccess = false
-		local idStr = string.match(visualInfo.headMeshId, "%d+")
-		if idStr and #idStr >= 13 then 
-			if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
-				headSuccess = true
-				appliedAnything = true
-			end
-		end
-		
-		if not headSuccess then
-			print("[CatAppearance] 使用 Mesh 模式套用頭部...")
+		if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
+			appliedAnything = true
+		else
+			-- 回退到舊有的 Mesh 模式
+			print("[CatAppearance] 配件模式失敗，使用 Mesh 模式套用頭部...")
 			local catHead = createVisualPart("HeadShape", visualInfo.headMeshId, visualInfo.headTextureId)
 			catHead.Parent = character
 			local w = Instance.new("Weld")
