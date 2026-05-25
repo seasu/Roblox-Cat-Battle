@@ -21,28 +21,120 @@ local function clearEquipVisuals(character: Model)
 	end
 end
 
-local function applyAccessory(character: Model, assetId: string, itemName: string)
+local function applyAccessory(character: Model, assetId: string, itemName: string, slot: string)
 	if assetId == "rbxassetid://0" then return end -- 忽略佔位符
 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
 	-- 嘗試從 ID 載入資產
-	-- 注意：在實際環境中，Asset ID 必須是 Accessory 類別且正確設定 Attachment
 	local success, model = pcall(function()
 		return InsertService:LoadAsset(tonumber(string.match(assetId, "%d+")))
 	end)
 
 	if success and model then
-		local accessory = model:FindFirstChildOfClass("Accessory")
+		-- 1. 優先尋找資產包內的 Accessory
+		local accessory = model:FindFirstChildOfClass("Accessory") or model:FindFirstChildOfClass("Accessory", true)
 		if accessory then
 			accessory.Name = PREFIX .. itemName
 			humanoid:AddAccessory(accessory:Clone())
+			model:Destroy()
+			return
+		end
+		
+		-- 2. 備案：若資產包內是 MeshPart 或 SpecialMesh，將其配件化
+		local foundMesh = model:FindFirstChildOfClass("MeshPart", true) or model:FindFirstChildOfClass("SpecialMesh", true)
+		if foundMesh then
+			warn("[EquipmentAppearance] 裝備 ID " .. assetId .. " 內部無 Accessory，執行自動轉換...")
+			local newAcc = Instance.new("Accessory")
+			newAcc.Name = PREFIX .. itemName
+			
+			local handle = Instance.new("Part")
+			handle.Name = "Handle"
+			handle.Size = Vector3.new(1, 1, 1)
+			handle.Transparency = 0
+			handle.CanCollide = false
+			handle.Parent = newAcc
+			
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.FileMesh
+			if foundMesh:IsA("MeshPart") then
+				mesh.MeshId = foundMesh.MeshId
+				mesh.TextureId = foundMesh.TextureID
+				mesh.Scale = foundMesh.Size -- 核心修復：使用 MeshPart.Size 作為 SpecialMesh 的 Scale，保留原始縮放
+			else
+				mesh.MeshId = foundMesh.MeshId
+				mesh.TextureId = foundMesh.TextureId
+				mesh.Scale = foundMesh.Scale
+			end
+			mesh.Parent = handle
+			
+			-- 核心修復：嘗試遞迴尋找來源資產中的 Attachment，保留原本對齊 CFrame 偏移量
+			local existingAtt = foundMesh:FindFirstChildOfClass("Attachment")
+			if not existingAtt and foundMesh.Parent then
+				existingAtt = foundMesh.Parent:FindFirstChildOfClass("Attachment")
+				if not existingAtt then
+					existingAtt = model:FindFirstChildOfClass("Attachment", true)
+				end
+			end
+
+			local att
+			if existingAtt then
+				att = existingAtt:Clone()
+				print("[EquipmentAppearance] 成功複製並沿用來源裝備原有 Attachment:", att.Name, "CFrame:", att.CFrame)
+			else
+				att = Instance.new("Attachment")
+				-- 依據槽位決定預設掛載點
+				if slot == "hat" then
+					att.Name = "HatAttachment"
+				elseif slot == "collar" then
+					att.Name = "NeckAttachment"
+				elseif slot == "weapon" then
+					att.Name = "RightGripAttachment"
+				else
+					att.Name = "BodyFrontAttachment"
+				end
+			end
+			att.Parent = handle
+			
+			humanoid:AddAccessory(newAcc)
+			print("[EquipmentAppearance] 成功將裝備內容轉換為配件：", itemName)
 		end
 		model:Destroy()
 	else
-		-- warn("[EquipmentAppearance] 無法載入資產 ID: " .. assetId)
-		-- 佔位方案：如果無法載入，可以在此處實作基礎視覺作為備案
+		-- 3. 終極備案：如果 LoadAsset 失敗，且該 ID 可能是原始 Mesh ID
+		-- 我們在此可以建立一個使用該 ID 的配件
+		warn("[EquipmentAppearance] LoadAsset 失敗，嘗試以原始 Mesh ID 模式建立配件: ", assetId)
+		
+		local newAcc = Instance.new("Accessory")
+		newAcc.Name = PREFIX .. itemName
+		
+		local handle = Instance.new("Part")
+		handle.Name = "Handle"
+		handle.Size = Vector3.new(1, 1, 1)
+		handle.Transparency = 0
+		handle.CanCollide = false
+		handle.Parent = newAcc
+		
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.FileMesh
+		mesh.MeshId = assetId
+		mesh.Parent = handle
+		
+		local att = Instance.new("Attachment")
+		if slot == "hat" then
+			att.Name = "HatAttachment"
+		elseif slot == "collar" then
+			att.Name = "NeckAttachment"
+		elseif slot == "weapon" then
+			att.Name = "RightGripAttachment"
+		else
+			att.Name = "BodyFrontAttachment"
+		end
+		att.Parent = handle
+		
+		humanoid:AddAccessory(newAcc)
+		print("[EquipmentAppearance] 已透過原始 Mesh ID 強制建立配件：", itemName)
 	end
 end
 
@@ -67,7 +159,7 @@ function EquipmentAppearance.apply(player: Player, loadout: { [string]: string? 
 			if itemId then
 				local itemInfo = EquipmentData.getItemById(itemId)
 				if itemInfo and itemInfo.assetId ~= "rbxassetid://0" then
-					applyAccessory(char, itemInfo.assetId, itemInfo.id)
+					applyAccessory(char, itemInfo.assetId, itemInfo.id, itemInfo.slot)
 				end
 			end
 		end
