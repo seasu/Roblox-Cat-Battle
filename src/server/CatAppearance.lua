@@ -76,10 +76,68 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return false end
 
+	-- ──────────────────────────────────────────────────────────────────
+	-- A. 本地快取機制：優先在 ReplicatedStorage 中尋找本地預存的資產
+	-- ──────────────────────────────────────────────────────────────────
+	local replicatedStorage = game:GetService("ReplicatedStorage")
+	local localAsset = nil
+	local assetsFolder = replicatedStorage:FindFirstChild("Assets")
+	
+	-- 嘗試從 "Assets" 資料夾或 ReplicatedStorage 根目錄尋找
+	local possibleNames = {
+		accessoryName,
+		string.gsub(accessoryName, "^Cat", ""), -- 去除 "Cat" 前綴，例如 "Suit", "Hood"
+		"whiteCat" .. string.gsub(accessoryName, "^Cat", ""), -- 配合具體貓咪名稱，例如 "whiteCatSuit"
+		"white" .. string.gsub(accessoryName, "^Cat", "")
+	}
+
+	for _, name in ipairs(possibleNames) do
+		if assetsFolder then
+			localAsset = assetsFolder:FindFirstChild(name) or assetsFolder:FindFirstChild(string.lower(name))
+		end
+		if not localAsset then
+			localAsset = replicatedStorage:FindFirstChild(name) or replicatedStorage:FindFirstChild(string.lower(name))
+		end
+		if localAsset then break end
+	end
+
+	if localAsset then
+		print(string.format("[CatAppearance] 找到本地預存 %s 資產, 直接 Clone 套用: %s", accessoryName, localAsset.Name))
+		local newAcc
+		if localAsset:IsA("Accessory") then
+			newAcc = localAsset:Clone()
+			newAcc.Name = accessoryName
+		else
+			-- 如果是 Model 或 MeshPart，將其自動配件化
+			newAcc = Instance.new("Accessory")
+			newAcc.Name = accessoryName
+			
+			local handle = localAsset:Clone()
+			handle.Name = "Handle"
+			if handle:IsA("BasePart") then
+				handle.CanCollide = false
+				handle.Transparency = 0
+			end
+			handle.Parent = newAcc
+			
+			local existingAtt = handle:FindFirstChildOfClass("Attachment")
+			if not existingAtt then
+				local att = Instance.new("Attachment")
+				att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+				att.Parent = handle
+			end
+		end
+		humanoid:AddAccessory(newAcc)
+		return true
+	end
+
+	-- ──────────────────────────────────────────────────────────────────
+	-- B. 遠端資產載入機制
+	-- ──────────────────────────────────────────────────────────────────
 	local assetIdNum = tonumber(string.match(assetId, "%d+"))
 	if not assetIdNum then return false end
 
-	print("[CatAppearance] 嘗試載入資產 ID:", assetIdNum, "型態:", accessoryName)
+	print("[CatAppearance] 嘗試載入遠端資產 ID:", assetIdNum, "型態:", accessoryName)
 
 	local success, model = pcall(function()
 		return InsertService:LoadAsset(assetIdNum)
@@ -96,60 +154,38 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			return true
 		end
 		
-		-- 2. 備案：若資產包內是 MeshPart 或 SpecialMesh，將其配件化
+		-- 2. 備案：若資產包內是 MeshPart，直接 Clone 物件，完整保留原始尺寸、材質、顏色與 PBR
 		local foundMesh = model:FindFirstChildOfClass("MeshPart", true) or model:FindFirstChildOfClass("SpecialMesh", true)
 		if foundMesh then
-			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 內部無 Accessory，執行自動轉換...")
+			warn("[CatAppearance] 資產 ID " .. assetIdNum .. " 內部無 Accessory，直接 Clone 轉配件...")
 			local newAcc = Instance.new("Accessory")
 			newAcc.Name = accessoryName
 			
-			local handle = Instance.new("Part")
+			-- 直接 Clone，保留其材質、PBR、Size
+			local handle = foundMesh:Clone()
 			handle.Name = "Handle"
-			handle.Size = Vector3.new(1, 1, 1)
-			handle.Transparency = 0
-			handle.CanCollide = false
+			if handle:IsA("BasePart") then
+				handle.CanCollide = false
+				handle.Transparency = 0
+			end
 			handle.Parent = newAcc
 			
-			local mesh = Instance.new("SpecialMesh")
-			mesh.MeshType = Enum.MeshType.FileMesh
-			if foundMesh:IsA("MeshPart") then
-				mesh.MeshId = foundMesh.MeshId
-				mesh.TextureId = (foundMesh.TextureID ~= "" and foundMesh.TextureID) or textureId or ""
-				mesh.Scale = foundMesh.Size -- 核心修復：使用 MeshPart.Size 作為 SpecialMesh 的 Scale，保留原始縮放
-			else
-				mesh.MeshId = foundMesh.MeshId
-				mesh.TextureId = (foundMesh.TextureId ~= "" and foundMesh.TextureId) or textureId or ""
-				mesh.Scale = foundMesh.Scale
-			end
-			mesh.Parent = handle
-			
-			-- 核心修復：嘗試遞迴尋找來源資產中的 Attachment，保留原本對齊 CFrame 偏移量
-			local existingAtt = foundMesh:FindFirstChildOfClass("Attachment")
-			if not existingAtt and foundMesh.Parent then
-				existingAtt = foundMesh.Parent:FindFirstChildOfClass("Attachment")
-				if not existingAtt then
-					existingAtt = model:FindFirstChildOfClass("Attachment", true)
-				end
-			end
-
-			local att
-			if existingAtt then
-				att = existingAtt:Clone()
-				print("[CatAppearance] 成功複製並沿用來源模型原有 Attachment:", att.Name, "CFrame:", att.CFrame)
-			else
-				att = Instance.new("Attachment")
+			-- 如果有原有 Attachment，保留它；否則建立預設
+			local existingAtt = handle:FindFirstChildOfClass("Attachment")
+			if not existingAtt then
+				local att = Instance.new("Attachment")
 				att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+				att.Parent = handle
 			end
-			att.Parent = handle
 			
 			humanoid:AddAccessory(newAcc)
-			print("[CatAppearance] 成功將資產包內容轉換為配件：", accessoryName)
+			print("[CatAppearance] 成功將克隆網格轉換為配件：", accessoryName)
 			model:Destroy()
 			return true
 		end
 		model:Destroy()
 	else
-		-- 3. 終極備案：如果 LoadAsset 失敗（通常是因為權限問題，或是這本就是原始 Mesh ID）
+		-- 3. 終極備案：如果 LoadAsset 失敗
 		-- 如果是頭套，在此回傳 false，讓其回到穩定的 Weld 貼合模式
 		if accessoryName == "CatHood" then
 			warn("[CatAppearance] LoadAsset 失敗且為頭套，回傳 false 以觸發舊有 Weld 貼合模式: " .. assetId)
@@ -251,12 +287,12 @@ function CatAppearance.apply(player: Player, catId: string)
 		appliedAnything = true
 	end
 
-	-- 5. 透明度設定 (偵錯用 0.7)
+	-- 5. 透明度設定 (偵錯用 0.7，套用失敗則恢復 0)
 	if appliedAnything then
 		print("[CatAppearance] 套用成功，隱藏原始身體 (Alpha 0.7)")
 		setBodyTransparency(character, 0.7)
 	else
-		warn("[CatAppearance] 未能套用任何自訂組件，保持原始身體顯示")
+		warn("[CatAppearance] 未能套用任何自訂組件，保持原始身體顯示 (Alpha 0)")
 		setBodyTransparency(character, 0)
 	end
 
