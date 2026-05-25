@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.4.5`
+> **Current Version:** `v0.4.7`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -158,6 +158,14 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-25（v0.4.7）
+- **自定義 3D 模型與裝備載入修復 (Custom 3D Model & Equipment Fix)**：
+  - **保留自動轉換縮放**：在將自定義 `MeshPart` 模型自動配件化為 `SpecialMesh` 時，保留其原始 `Size` 作為 `SpecialMesh.Scale`，避免模型縮小至 1x1x1。
+  - **保留掛載對齊偏移**：遞迴尋找來源自定義模型中定義的 `Attachment`，若存在則直接複製並保留其 `CFrame` 偏移量，避免自定義頭套、連身衣或裝備位置歪斜。
+  - **優化失敗回退機制**：修正 `InsertService:LoadAsset` 權限不足失敗後終極備案直接返回 `true` 的問題。對於頭套（CatHood），在載入失敗時正確回傳 `false`，觸發舊有的「Weld 貼合模式」，以在無權限時也能正常渲染。
+  - **同步修復裝備載入**：對 `EquipmentAppearance.lua` 引入相同的 MeshPart 轉換、縮放保留、Attachment 複製及原始 Mesh 強制掛載備案邏輯，解決自定義裝備無法顯示的問題。
+- **版本號更新**：升級至 `v0.4.7`。
 
 ### 2026-05-08（v0.4.6）
 - **資產加載相容性大升級 (Resilience Update)**：

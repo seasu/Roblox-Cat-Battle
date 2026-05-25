@@ -71,7 +71,7 @@ local function createVisualPart(name: string, meshId: string, textureId: string)
 	return p
 end
 
-local function applyAccessory(character: Model, assetId: string, accessoryName: string): boolean
+local function applyAccessory(character: Model, assetId: string, accessoryName: string, textureId: string?): boolean
 	if not assetId or assetId == "rbxassetid://0" or assetId == "" then return false end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return false end
@@ -114,17 +114,32 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 			mesh.MeshType = Enum.MeshType.FileMesh
 			if foundMesh:IsA("MeshPart") then
 				mesh.MeshId = foundMesh.MeshId
-				mesh.TextureId = foundMesh.TextureID
+				mesh.TextureId = (foundMesh.TextureID ~= "" and foundMesh.TextureID) or textureId or ""
+				mesh.Scale = foundMesh.Size -- 核心修復：使用 MeshPart.Size 作為 SpecialMesh 的 Scale，保留原始縮放
 			else
 				mesh.MeshId = foundMesh.MeshId
-				mesh.TextureId = foundMesh.TextureId
+				mesh.TextureId = (foundMesh.TextureId ~= "" and foundMesh.TextureId) or textureId or ""
 				mesh.Scale = foundMesh.Scale
 			end
 			mesh.Parent = handle
 			
-			-- 依據名稱設定掛載點
-			local att = Instance.new("Attachment")
-			att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+			-- 核心修復：嘗試遞迴尋找來源資產中的 Attachment，保留原本對齊 CFrame 偏移量
+			local existingAtt = foundMesh:FindFirstChildOfClass("Attachment")
+			if not existingAtt and foundMesh.Parent then
+				existingAtt = foundMesh.Parent:FindFirstChildOfClass("Attachment")
+				if not existingAtt then
+					existingAtt = model:FindFirstChildOfClass("Attachment", true)
+				end
+			end
+
+			local att
+			if existingAtt then
+				att = existingAtt:Clone()
+				print("[CatAppearance] 成功複製並沿用來源模型原有 Attachment:", att.Name, "CFrame:", att.CFrame)
+			else
+				att = Instance.new("Attachment")
+				att.Name = (accessoryName == "CatHood") and "HatAttachment" or "BodyFrontAttachment"
+			end
 			att.Parent = handle
 			
 			humanoid:AddAccessory(newAcc)
@@ -134,8 +149,13 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 		end
 		model:Destroy()
 	else
-		-- 3. 終極備案：如果 LoadAsset 失敗（通常是因為這是原始 Mesh ID 而非 Model ID）
-		-- 直接嘗試建立一個使用該 ID 的配件
+		-- 3. 終極備案：如果 LoadAsset 失敗（通常是因為權限問題，或是這本就是原始 Mesh ID）
+		-- 如果是頭套，在此回傳 false，讓其回到穩定的 Weld 貼合模式
+		if accessoryName == "CatHood" then
+			warn("[CatAppearance] LoadAsset 失敗且為頭套，回傳 false 以觸發舊有 Weld 貼合模式: " .. assetId)
+			return false
+		end
+
 		warn("[CatAppearance] LoadAsset 失敗，嘗試以原始 Mesh ID 模式建立配件: ", assetId)
 		
 		local newAcc = Instance.new("Accessory")
@@ -151,7 +171,7 @@ local function applyAccessory(character: Model, assetId: string, accessoryName: 
 		local mesh = Instance.new("SpecialMesh")
 		mesh.MeshType = Enum.MeshType.FileMesh
 		mesh.MeshId = assetId
-		-- 嘗試抓取同配置中的 TextureId (如果是 Hood)
+		mesh.TextureId = textureId or ""
 		mesh.Parent = handle
 		
 		local att = Instance.new("Attachment")
@@ -185,7 +205,7 @@ function CatAppearance.apply(player: Player, catId: string)
 
 	-- 2. 套用 Suit (連身衣)
 	if visualInfo.baseSuitAssetId and visualInfo.baseSuitAssetId ~= "rbxassetid://0" then
-		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit") then
+		if applyAccessory(character, visualInfo.baseSuitAssetId, "CatSuit", visualInfo.headTextureId) then
 			appliedAnything = true
 		else
 			warn("[CatAppearance] Suit 套用失敗")
@@ -195,7 +215,7 @@ function CatAppearance.apply(player: Player, catId: string)
 	-- 3. 套用 Head / Hood (頭部)
 	local head = character:FindFirstChild("Head")
 	if head and visualInfo.headMeshId ~= "rbxassetid://0" then
-		if applyAccessory(character, visualInfo.headMeshId, "CatHood") then
+		if applyAccessory(character, visualInfo.headMeshId, "CatHood", visualInfo.headTextureId) then
 			appliedAnything = true
 		else
 			-- 回退到舊有的 Mesh 模式
