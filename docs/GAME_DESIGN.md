@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.5.0`
+> **Current Version:** `v0.5.1`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -158,6 +158,12 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-25（v0.5.1）
+- **程序化中空露臉兜帽與防禿頭優化 (Procedural Hollow Hood & anti-baldness Overhaul)**：
+  - **5-Part 拼接式中空兜帽**：在 `CatAppearance.lua` 中，將原本單個大圓球兜帽重構為由 5 個 Part 拼接而成的中空兜帽（包含 `CatSuitHoodBack` 球體、`CatSuitHoodLeft` 頰板、`CatSuitHoodRight` 頰板、`CatSuitHoodForehead` 額板、`CatSuitHoodChin` 頦板），圍合出合適的孔洞以完美露出玩家正臉、眼睛與腮紅口鼻，並完全隱藏原有頭髮，解決禿頭與臉部遮擋問題。
+  - **耳朵焊接位置調整**：將立體粉耳的焊接目標點調整為後腦勺 `CatSuitHoodBack`，並相應微調 CFrame 偏移，使其在頭頂上方偏前處漂亮立起，符合全身貓咪套裝的美觀度。
+- **版本號更新**：升級至 `v0.5.1`。
 
 ### 2026-05-25（v0.5.0）
 - **重新建構 3D 人物與本地資產快取系統 (3D Character & Local Asset Cache Overhaul)**：

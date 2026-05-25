@@ -152,12 +152,12 @@ local function createProceduralEars(hood: BasePart, baseColor: Color3, character
 
 		weldParts(outer, inner, CFrame.new(0, 0.02, -0.11))
 
-		-- 外耳相對於兜帽的對齊偏移與偏轉角 (因兜帽變大而向外/上調整)
+		-- 外耳相對於後腦勺的對齊偏移與偏轉角 (調整為偏前，立在頂部兩側)
 		local yaw = isLeft and math.rad(15) or math.rad(-15)
 		local roll = isLeft and math.rad(12) or math.rad(-12)
-		local posX = isLeft and -0.38 or 0.38
+		local posX = isLeft and -0.45 or 0.45
 		
-		local offset = CFrame.new(posX, 0.52, -0.05) 
+		local offset = CFrame.new(posX, 0.6, -0.2) 
 			* CFrame.Angles(math.rad(10), yaw, roll)
 			* CFrame.Angles(0, math.rad(180), 0) -- 旋轉朝前
 		
@@ -219,23 +219,70 @@ local function createProceduralFace(head: BasePart, baseColor: Color3, character
 	weldParts(head, nose, CFrame.new(0, -0.09, -0.51))
 end
 
--- 4. 建立貓兜帽頭套 (Hood)，包覆後腦勺與兩側，向後偏移露出前方臉部
+-- 4. 建立兜帽頭套，由 5 個部分拼接而成，中空露出人臉，並完整包裹頭部防禿頭
 local function createProceduralHood(head: BasePart, baseColor: Color3, character: Model)
-	local hood = Instance.new("Part")
-	hood.Name = "CatSuitHood"
-	hood.Shape = Enum.PartType.Ball
-	-- 尺寸從 1.32 放大至 1.48，以完全包覆頭部防止禿頭
-	hood.Size = Vector3.new(1.48, 1.48, 1.48)
-	hood.Color = baseColor
-	hood.Material = Enum.Material.SmoothPlastic
-	hood.CanCollide = false
-	hood.Parent = character
+	-- A. 後腦勺 (Back) — 採用 Sphere SpecialMesh，尺寸 1.4, 1.4, 1.1，向後偏移 0.15 包住後腦
+	local back = Instance.new("Part")
+	back.Name = "CatSuitHoodBack"
+	back.Size = Vector3.new(1.4, 1.4, 1.1)
+	back.Color = baseColor
+	back.Material = Enum.Material.SmoothPlastic
+	back.CanCollide = false
+	back.CastShadow = true
+	back.Parent = character
 	
-	-- 向上偏移 0.08，向後偏移減小到 0.05，使兜帽邊緣往前延伸包住前額
-	weldParts(head, hood, CFrame.new(0, 0.08, 0.05))
+	local sm = Instance.new("SpecialMesh")
+	sm.MeshType = Enum.MeshType.Sphere
+	sm.Parent = back
 	
-	-- 在兜帽頭套上長出貓耳，並在頭部本體長出口鼻與腮紅
-	createProceduralEars(hood, baseColor, character)
+	weldParts(head, back, CFrame.new(0, 0, 0.15))
+	
+	-- B. 前額帽簷 (Forehead) — 遮蓋上額頭，防止正面和頂部禿頭
+	local forehead = Instance.new("Part")
+	forehead.Name = "CatSuitHoodForehead"
+	forehead.Size = Vector3.new(1.42, 0.35, 0.6)
+	forehead.Color = baseColor
+	forehead.Material = Enum.Material.SmoothPlastic
+	forehead.CanCollide = false
+	forehead.CastShadow = true
+	forehead.Parent = character
+	weldParts(head, forehead, CFrame.new(0, 0.55, -0.25))
+	
+	-- C. 下巴 (Chin) — 包裹臉部下方
+	local chin = Instance.new("Part")
+	chin.Name = "CatSuitHoodChin"
+	chin.Size = Vector3.new(1.42, 0.3, 0.6)
+	chin.Color = baseColor
+	chin.Material = Enum.Material.SmoothPlastic
+	chin.CanCollide = false
+	chin.CastShadow = true
+	chin.Parent = character
+	weldParts(head, chin, CFrame.new(0, -0.55, -0.25))
+	
+	-- D. 左臉頰 (Left Cheek) — 包裹左側臉頰
+	local leftCheek = Instance.new("Part")
+	leftCheek.Name = "CatSuitHoodLeft"
+	leftCheek.Size = Vector3.new(0.35, 0.8, 0.6)
+	leftCheek.Color = baseColor
+	leftCheek.Material = Enum.Material.SmoothPlastic
+	leftCheek.CanCollide = false
+	leftCheek.CastShadow = true
+	leftCheek.Parent = character
+	weldParts(head, leftCheek, CFrame.new(-0.55, 0.025, -0.25))
+	
+	-- E. 右臉頰 (Right Cheek) — 包裹右側臉頰
+	local rightCheek = Instance.new("Part")
+	rightCheek.Name = "CatSuitHoodRight"
+	rightCheek.Size = Vector3.new(0.35, 0.8, 0.6)
+	rightCheek.Color = baseColor
+	rightCheek.Material = Enum.Material.SmoothPlastic
+	rightCheek.CanCollide = false
+	rightCheek.CastShadow = true
+	rightCheek.Parent = character
+	weldParts(head, rightCheek, CFrame.new(0.55, 0.025, -0.25))
+	
+	-- 在後腦勺 (back) 頭套上長出立體雙色貓耳，並在頭部本體上長出口鼻與腮紅組
+	createProceduralEars(back, baseColor, character)
 	createProceduralFace(head, baseColor, character)
 end
 
