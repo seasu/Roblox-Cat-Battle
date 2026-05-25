@@ -152,12 +152,12 @@ local function createProceduralEars(hood: BasePart, baseColor: Color3, character
 
 		weldParts(outer, inner, CFrame.new(0, 0.02, -0.11))
 
-		-- 外耳相對於兜帽的對齊偏移與偏轉角
+		-- 外耳相對於兜帽的對齊偏移與偏轉角 (因兜帽變大而向外/上調整)
 		local yaw = isLeft and math.rad(15) or math.rad(-15)
 		local roll = isLeft and math.rad(12) or math.rad(-12)
-		local posX = isLeft and -0.32 or 0.32
+		local posX = isLeft and -0.38 or 0.38
 		
-		local offset = CFrame.new(posX, 0.45, -0.05) 
+		local offset = CFrame.new(posX, 0.52, -0.05) 
 			* CFrame.Angles(math.rad(10), yaw, roll)
 			* CFrame.Angles(0, math.rad(180), 0) -- 旋轉朝前
 		
@@ -224,14 +224,15 @@ local function createProceduralHood(head: BasePart, baseColor: Color3, character
 	local hood = Instance.new("Part")
 	hood.Name = "CatSuitHood"
 	hood.Shape = Enum.PartType.Ball
-	hood.Size = Vector3.new(1.32, 1.32, 1.32)
+	-- 尺寸從 1.32 放大至 1.48，以完全包覆頭部防止禿頭
+	hood.Size = Vector3.new(1.48, 1.48, 1.48)
 	hood.Color = baseColor
 	hood.Material = Enum.Material.SmoothPlastic
 	hood.CanCollide = false
 	hood.Parent = character
 	
-	-- 向後與向上偏移，露出一張完整的人臉與五官，頭髮被剪除
-	weldParts(head, hood, CFrame.new(0, 0.05, 0.16))
+	-- 向上偏移 0.08，向後偏移減小到 0.05，使兜帽邊緣往前延伸包住前額
+	weldParts(head, hood, CFrame.new(0, 0.08, 0.05))
 	
 	-- 在兜帽頭套上長出貓耳，並在頭部本體長出口鼻與腮紅
 	createProceduralEars(hood, baseColor, character)
