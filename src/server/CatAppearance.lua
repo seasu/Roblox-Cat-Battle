@@ -23,9 +23,18 @@ local function clearOldVisuals(character: Model)
 		if child:IsA("BasePart") and string.sub(child.Name, 1, 3) == "Cat" then
 			child:Destroy()
 		end
-		-- 清除自訂配件 (包含 Hood 與 Suit)
-		if child:IsA("Accessory") and (child.Name == "CatHood" or child.Name == "CatSuit") then
-			child:Destroy()
+	end
+	
+	-- 清除自訂配件 (包含 Hood 與 Suit)
+	-- 同時清除原本角色自帶的頭髮與帽子等 Accessory，實現「全身只露人臉」的效果
+	for _, child in ipairs(character:GetChildren()) do
+		if child:IsA("Accessory") then
+			local isCustom = string.match(child.Name, "^Cat") or string.match(child.Name, "^EqVis_")
+			if not isCustom then
+				child:Destroy() -- 直接清除頭髮、原本的帽子等，防止穿模
+			elseif child.Name == "CatHood" or child.Name == "CatSuit" then
+				child:Destroy()
+			end
 		end
 	end
 end
@@ -38,13 +47,18 @@ local function setBodyTransparency(character: Model, transparency: number)
 
 	for _, child in ipairs(character:GetDescendants()) do
 		if child:IsA("BasePart") then
-			-- 只隱藏標準身體部位，且排除所有 Accessory 內部的 Handle
+			-- 只隱藏標準身體部位，且排除所有 Accessory 內部的 Handle，且 Head 保持完全不透明 (保留臉部)
 			if partMap[child.Name] and not child:FindFirstAncestorOfClass("Accessory") then
-				child.Transparency = transparency
+				if child.Name == "Head" then
+					child.Transparency = 0 -- 臉部保持正常不透明！
+				else
+					child.Transparency = transparency
+				end
 			end
 		end
 		
-		if child:IsA("Decal") and child.Name ~= "DynamicFace" then
+		-- 臉部 Decal 絕對不設為透明
+		if child:IsA("Decal") and child.Name ~= "DynamicFace" and child.Parent and child.Parent.Name ~= "Head" then
 			local parent = child.Parent
 			if parent and partMap[parent.Name] then
 				child.Transparency = transparency
@@ -85,8 +99,36 @@ local function weldParts(part0: BasePart, part1: BasePart, c0: CFrame): Weld
 	return w
 end
 
--- 1. 建立立體粉嫩雙色貓耳
-local function createProceduralEars(head: BasePart, baseColor: Color3, character: Model)
+-- 1. 建立貼合全身 R15 關節的貓連身套裝 (Suit)
+local function createProceduralSuit(character: Model, baseColor: Color3)
+	local SUIT_PARTS = {
+		"UpperTorso", "LowerTorso",
+		"LeftUpperArm", "LeftLowerArm", "LeftHand",
+		"RightUpperArm", "RightLowerArm", "RightHand",
+		"LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+		"RightUpperLeg", "RightLowerLeg", "RightFoot"
+	}
+	
+	for _, partName in ipairs(SUIT_PARTS) do
+		local origPart = character:FindFirstChild(partName)
+		if origPart and origPart:IsA("BasePart") then
+			local suitPart = Instance.new("Part")
+			suitPart.Name = "CatSuitPart_" .. partName
+			-- 稍微膨脹 0.04 格，完全包裹原始關節肢體，形成全身衣服
+			suitPart.Size = origPart.Size + Vector3.new(0.04, 0.04, 0.04)
+			suitPart.Color = baseColor
+			suitPart.Material = Enum.Material.SmoothPlastic
+			suitPart.CanCollide = false
+			suitPart.Massless = true
+			suitPart.Parent = character
+			
+			weldParts(origPart, suitPart, CFrame.new(0, 0, 0))
+		end
+	end
+end
+
+-- 2. 建立立體粉嫩雙色貓耳
+local function createProceduralEars(hood: BasePart, baseColor: Color3, character: Model)
 	local function createEar(name: string, isLeft: boolean)
 		-- 外耳
 		local outer = Instance.new("WedgePart")
@@ -108,27 +150,25 @@ local function createProceduralEars(head: BasePart, baseColor: Color3, character
 		inner.Material = Enum.Material.SmoothPlastic
 		inner.Parent = character
 
-		-- 內耳相對於外耳的偏移 (貼在 Wedge 的斜面上)
 		weldParts(outer, inner, CFrame.new(0, 0.02, -0.11))
 
-		-- 外耳相對於頭部的對齊偏移與偏轉角 (營造呆萌感)
+		-- 外耳相對於兜帽的對齊偏移與偏轉角
 		local yaw = isLeft and math.rad(15) or math.rad(-15)
 		local roll = isLeft and math.rad(12) or math.rad(-12)
 		local posX = isLeft and -0.32 or 0.32
 		
-		-- WedgePart 預設方向調整
 		local offset = CFrame.new(posX, 0.45, -0.05) 
 			* CFrame.Angles(math.rad(10), yaw, roll)
 			* CFrame.Angles(0, math.rad(180), 0) -- 旋轉朝前
 		
-		weldParts(head, outer, offset)
+		weldParts(hood, outer, offset)
 	end
 
 	createEar("Left", true)
 	createEar("Right", false)
 end
 
--- 2. 建立立體口鼻與害羞 Neon 霓虹腮紅
+-- 3. 建立立體口鼻與害羞 Neon 霓虹腮紅
 local function createProceduralFace(head: BasePart, baseColor: Color3, character: Model)
 	-- 腮紅 (Cheeks)
 	local function createBlush(name: string, isLeft: boolean)
@@ -179,7 +219,26 @@ local function createProceduralFace(head: BasePart, baseColor: Color3, character
 	weldParts(head, nose, CFrame.new(0, -0.09, -0.51))
 end
 
--- 3. 建立環繞脖子的蓬鬆毛茸茸領環
+-- 4. 建立貓兜帽頭套 (Hood)，包覆後腦勺與兩側，向後偏移露出前方臉部
+local function createProceduralHood(head: BasePart, baseColor: Color3, character: Model)
+	local hood = Instance.new("Part")
+	hood.Name = "CatSuitHood"
+	hood.Shape = Enum.PartType.Ball
+	hood.Size = Vector3.new(1.32, 1.32, 1.32)
+	hood.Color = baseColor
+	hood.Material = Enum.Material.SmoothPlastic
+	hood.CanCollide = false
+	hood.Parent = character
+	
+	-- 向後與向上偏移，露出一張完整的人臉與五官，頭髮被剪除
+	weldParts(head, hood, CFrame.new(0, 0.05, 0.16))
+	
+	-- 在兜帽頭套上長出貓耳，並在頭部本體長出口鼻與腮紅
+	createProceduralEars(hood, baseColor, character)
+	createProceduralFace(head, baseColor, character)
+end
+
+-- 5. 建立環繞脖子的蓬鬆毛茸茸領環
 local function createProceduralCollar(upperTorso: BasePart, character: Model)
 	local collarColor = Color3.fromRGB(255, 255, 255) -- 白色蓬鬆毛領
 	local numPuffs = 8
@@ -204,7 +263,7 @@ local function createProceduralCollar(upperTorso: BasePart, character: Model)
 	end
 end
 
--- 4. 建立多段向上微翹的軟Q貓尾巴
+-- 6. 建立多段向上微翹的軟Q貓尾巴
 local function createProceduralTail(lowerTorso: BasePart, baseColor: Color3, character: Model)
 	local numSegments = 3
 	local segLength = 0.36
@@ -424,7 +483,7 @@ function CatAppearance.apply(player: Player, catId: string)
 	local visualInfo = CatVisualData.cats[catId] or CatVisualData.cats.whiteCat
 	local appliedAnything = false
 
-	-- 1. 清理
+	-- 1. 清理與隱藏原生頭髮帽子
 	clearOldVisuals(character)
 
 	-- 2. 套用 Suit (連身衣)
@@ -436,12 +495,13 @@ function CatAppearance.apply(player: Player, catId: string)
 	if hasSuit then
 		appliedAnything = true
 	else
-		-- 💖 視覺補強：若無 Suit/載入失敗，為角色脖子生成一圈白色蓬鬆毛茸茸領環，超可愛！
+		-- 💖 視覺補強：若無 Suit/載入失敗，為角色生成一套全身貼合的貓咪連身衣，並加上毛茸茸頸領！
+		createProceduralSuit(character, visualInfo.baseColor)
 		local upperTorso = character:FindFirstChild("UpperTorso")
 		if upperTorso then
 			createProceduralCollar(upperTorso, character)
-			appliedAnything = true
 		end
+		appliedAnything = true
 	end
 
 	-- 3. 套用 Head / Hood (頭部)
@@ -455,9 +515,8 @@ function CatAppearance.apply(player: Player, catId: string)
 		if hasHood then
 			appliedAnything = true
 		else
-			-- 💖 視覺補強與回退：若無 Hood/載入失敗，直接在原本 Head 上程序化生成「雙色貓耳」與「立體腮紅小粉鼻嘴包」！
-			createProceduralEars(head, visualInfo.baseColor, character)
-			createProceduralFace(head, visualInfo.baseColor, character)
+			-- 💖 視覺補強與回退：若無 Hood/載入失敗，在頭部生成一個偏後的貓兜帽頭套，並加上貓耳與臉部口鼻、腮紅組！
+			createProceduralHood(head, visualInfo.baseColor, character)
 			appliedAnything = true
 		end
 	end
@@ -487,10 +546,10 @@ function CatAppearance.apply(player: Player, catId: string)
 		end
 	end
 
-	-- 5. 透明度設定 (偵錯用 0.7，套用失敗則恢復 0)
+	-- 5. 透明度設定 (全身隱形 = 1，套用失敗則恢復 0，臉部 Head 永遠保持 0)
 	if appliedAnything then
-		print("[CatAppearance] 套用成功，隱藏原始身體 (Alpha 0.7)")
-		setBodyTransparency(character, 0.7)
+		print("[CatAppearance] 套用成功，隱藏原始身體，只留臉部 (Alpha 1)")
+		setBodyTransparency(character, 1) -- 這裡把身體設為完全透明 1，因為有我們的 Suit 代替了它！
 	else
 		warn("[CatAppearance] 未能套用任何自訂組件，保持原始身體顯示 (Alpha 0)")
 		setBodyTransparency(character, 0)
@@ -499,7 +558,9 @@ function CatAppearance.apply(player: Player, catId: string)
 	-- 6. 顏色同步
 	for _, part in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
-			if part.Name ~= "HumanoidRootPart" and not string.match(part.Name, "InnerEar") and not string.match(part.Name, "Blush") and not string.match(part.Name, "Nose") and not string.match(part.Name, "CollarPuff") and not string.match(part.Name, "TailTip") then
+			local name = part.Name
+			local isSpecialPart = string.match(name, "InnerEar") or string.match(name, "Blush") or string.match(name, "Nose") or string.match(name, "CollarPuff") or string.match(name, "TailTip")
+			if name ~= "HumanoidRootPart" and name ~= "Head" and not isSpecialPart then
 				part.Color = visualInfo.baseColor
 			end
 		end

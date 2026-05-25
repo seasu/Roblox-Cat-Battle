@@ -1,61 +1,50 @@
-# 變更紀錄與驗證說明 (Walkthrough v2 - 可愛程序化建模版)
+# 變更紀錄與驗證說明 (Walkthrough v3 - 全身貓套裝露出臉部版)
 
-本文件說明了針對「程序化可愛 3D 貓咪建模與快取系統 (v0.5.0)」的具體修改內容以及驗證方式。
+本文件說明了針對「重新建構 3D 人物外觀與全身貓咪套裝防禦系統 (v0.5.0)」的具體修改內容以及驗證方式。
 
 ---
 
 ## 修正內容說明
 
-本次修正對自定義模型的載入與渲染流程進行了深度的重構，並加入了一套**完全不依賴外部資產網格下載、100% 可正常顯示且超可愛的純 Luau 代碼 3D 貓咪建模系統**。主要修改涉及 [CatAppearance.lua](file:///Users/seasu.wang/Downloads/Projects/Roblox-Cat-Battle-main/src/server/CatAppearance.lua) 與 [EquipmentAppearance.lua](file:///Users/seasu.wang/Downloads/Projects/Roblox-Cat-Battle-main/src/server/EquipmentAppearance.lua)。
+本次修正對自定義模型的程序化備案渲染流程進行了深度的重構，以完美契合「全身包裹的貓套裝，只露出人臉，隱藏頭髮，且主體不呈現半透明」的視覺要求。主要修改涉及 [CatAppearance.lua](file:///Users/seasu.wang/Downloads/Projects/Roblox-Cat-Battle-main/src/server/CatAppearance.lua)。
 
 ```diff
--- 修正前：依靠 InsertService 從網路上 LoadAsset
-- local success, model = pcall(function() return InsertService:LoadAsset(...) end)
-- -- ❌ 在本地 Studio 協作開發時，因無非公開資產之權限會下載失敗 (HTTP 403)
-- -- ❌ 導致身體被設為半透明，但配件一個都沒載入
+-- 修正前：程序化建模只有耳朵、腮紅、口鼻、毛領與尾巴
+- setBodyTransparency(character, 0.7) -- ❌ 導致身體依然是半透明素體
+- -- ❌ 原本的頭髮配件沒有隱藏，與自訂頭套或程序化耳朵嚴重穿模
 
 -- 修正後：
-+ -- 1. ✅ 本地資產快取機制
-+ local localAsset = replicatedStorage.Assets:FindFirstChild(accessoryName) or ...
-+ if localAsset then
-+     -- 直接克隆本地物件穿戴，不受權限影響！
-+ end
++ -- 1. ✅ 徹底隱藏原生頭髮與帽子配件
++ child:Destroy() -- 在 clearOldVisuals 中將所有原生頭髮/帽子 Accessory 移除
 + 
-+ -- 2. 💖 超可愛程序化 3D 貓咪建模系統 (當無外部 Model 載入時自動觸發)
-+ createProceduralEars(head, baseColor, character) -- 建立粉嫩雙色貓耳
-+ createProceduralFace(head, baseColor, character) -- 建立 W型嘴、小粉鼻、霓虹害羞腮紅
-+ createProceduralCollar(upperTorso, character)   -- 建立蓬鬆白色毛茸茸頸領
-+ createProceduralTail(lowerTorso, baseColor, character) -- 建立 3 段向上微翹的軟Q尾巴 + 小白球
++ -- 2. ✅ 全身程序化貓連身套裝 (createProceduralSuit)
++ -- 遍評全身 R15 關節，為每個原部位（UpperTorso, Arms, Legs）建立膨脹 0.04 格的 SmoothPlastic 套裝 Part，並一對一 Weld 貼合。
++ 
++ -- 3. ✅ 程序化兜帽 (createProceduralHood)
++ -- 在 Head 上建立 1.32 大小的圓球作為兜帽，向後偏移 0.16 格，完美包覆後腦勺與頭頂兩側，並長出貓耳，露出前面的整張人臉。
++ 
++ -- 4. ✅ 精確透明度防禦
++ -- 當套裝載入時，將四肢與軀幹原本的 R15 Part 透明度設為 1 (完全隱形，以展示我們的套裝 Part)；而 Head 透明度強制保持 0 (完全不透明以展示人臉與 Decal 表情)！
 ```
 
-### 1. 程序化可愛 3D 貓咪建模系統 (`CatAppearance.lua`)
-當 `InsertService:LoadAsset` 因為權限問題失敗（且無本地快取實體）時，系統會**自動觸發程序化建模**，使用 Roblox 內建的幾何 Part 組合出一個極具美感且超可愛的 chibi 貓咪角色：
--   **雙色立體貓耳**：由身體同色「外耳」與粉紅色「內耳」疊加而成，以微幅角度（Yaw 與 Roll 偏轉）掛載於頭頂兩側，非常呆萌。
--   **立體口鼻與害羞腮紅**：
-    *   在臉頰兩側貼上具有微透明度、發出微光的粉色霓虹球體作為**害羞腮紅**。
-    *   使用兩個扁圓球拼成 **W 形貓嘴包 (Snout)**。
-    *   在中間加上一顆精緻的**深粉紅小粉鼻**。
--   **白色蓬鬆毛領**：在脖子周圍（`UpperTorso` 頂部）以環狀 Weld 連接 8 個白色小球，既遮擋了 R15 的關節縫隙，又呈現蓬鬆可愛的毛茸茸視覺。
--   **3段式微捲貓尾巴**：使用 3 段圓柱體關節連接，每段都有些許向上傾角，在最梢處裝有一顆乳白色的絨毛球。尾巴會跟著角色骨架自然搖擺，動態效果十分軟 Q。
-
-### 2. 本地快取與直接 Clone 重構
--   **本地快取機制 (Local Assets Cache)**：在呼叫 LoadAsset 之前，優先在 `ReplicatedStorage.Assets` 或是根目錄中尋找同名的本地實體（例如 `CatSuit`、`CatHood`），若存在則直接 `Clone` 並套用，解決本地 Studio 無資產權限下載的限制。
--   **直接克隆技術 (Direct Clone)**：在遠端資產載入成功且需要轉換配件時，直接 `Clone` 原始的 `MeshPart` 或 `SpecialMesh` 並重新命名為 `Handle` 裝入 `Accessory`。這能 100% 保留 3D 模型的原始材質、顏色、`Size` 尺寸與 PBR 貼圖元件（`SurfaceAppearance`）。
--   **透明度防禦**：如果由於任何原因導致沒有任何自定義配件或程序化物件套用成功，系統會將身體透明度設回 `0`，保證角色呈現正常的不透明預設身體。
-
-### 3. 裝備載入機制重構 (`EquipmentAppearance.lua`)
--   帽子、項圈及武器同步導入了本地資產快取搜尋與直接 `Clone` 的自動轉換邏輯，確保裝備也能在 Studio 測試中完美呈現。
+### 1. 全身貓咪套裝與兜帽系統 (`CatAppearance.lua`)
+當 LoadAsset 權限受限（且無本地快取）時，系統會動態建立一套精緻的 **3D 積木風全身貓套裝**：
+-   **全身連身衣 (CatSuit)**：遍歷原有的 R15 肢體部位，自動生成對齊並 Weld 貼合的微膨脹 `SmoothPlastic` 身體元件，它們會與原本的動作動畫 **100% 完美同步擺動**，呈現一體化的衣服外觀。
+-   **貓兜帽 (CatHood)**：建立一個大球體 Weld 掛載於 `Head`上，向後偏移 `0.16` 格並向上 `0.05` 格，將玩家的後腦勺、頭頂與兩側包住，並在頭套上長出立體雙色貓耳，而前方的**人臉與臉部貼圖則會完整且清晰地露在外面**。
+-   **原生頭髮與帽子隱藏**：在 `clearOldVisuals` 內，自動刪除角色原本帶入的頭髮、頭飾等 Accessory，避免其穿模露出，保證兜帽 the 完整包覆性。
+-   **透明度精確處理**：
+    *   原本的 `Head` 保持透明度 `0`，臉部貼圖保持可見。
+    *   其餘所有原本的身體部位（`UpperTorso` 等）透明度設為 `1`（完全隱形），此時只有我們的貓套裝 Part 呈現實體可見，**徹底解決半透明隱形人的問題**！
 
 ---
 
 ## 驗證步驟
 
-### 1. 程序化可愛特徵測試 (繞過網路載入)
-1. 刪除 `ReplicatedStorage` 中的所有本地快取，並使用非白貓角色或無法載入的 ID。
-2. 啟動測試，角色原本的 Head 上會自動生長出雙色粉嫩貓耳、立體口鼻、害羞 Neon 腮紅；脖子上會有一圈白色蓬鬆毛領，屁股後會有一條微翹的可愛尾巴。
-3. 身體透明度將會為 `0.7`（或是套用程序化建模後的透明度），與這些新增元件形成完美和諧 savings 的 chibi 貓咪角色外觀！
-
-### 2. 本地 Studio 快取測試
-1. 在您的 Roblox Studio 中，於 `ReplicatedStorage` 底下建立一個 `Folder` 命名為 `Assets`。
-2. 將您匯入好的 3D 貓咪模型命名為 `CatSuit` (或 `whiteCatSuit`) 與 `CatHood` 並放入該資料夾。
-3. 執行測試，驗證角色是否能順利讀取並克隆本地資產。
+### 1. 全身套裝與露臉測試 (繞過網路載入)
+1. 移除 `ReplicatedStorage` 中的本地快取，並執行測試。
+2. 檢查角色，您會看到：
+   - 角色頭上的原生頭髮與帽子已被完全清除。
+   - 角色穿著全身跟著動作自然擺動的貓套裝（與貓咪配置同色）。
+   - 角色後腦勺與頭頂被兜帽包覆，兜帽上有對粉嫩雙色貓耳；**前方露出一張完好無損、不透明的玩家人臉，並貼有腮紅、口鼻與小粉鼻**。
+   - 屁股後面跟著一條向上微捲並搖晃的動態尾巴。
+3. 輸出日誌應無錯誤。
