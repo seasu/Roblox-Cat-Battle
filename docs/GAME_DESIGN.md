@@ -1,6 +1,6 @@
 # Roblox Cat Battle — 遊戲設計文件 & 實作狀態
 
-> **Current Version:** `v0.4.7`
+> **Current Version:** `v0.5.0`
 > 每次修改後請更新此文件，避免重複閱讀全部程式碼。
 
 ---
@@ -158,6 +158,13 @@
 ---
 
 ## 變更日誌
+
+### 2026-05-25（v0.5.0）
+- **重新建構 3D 人物與本地資產快取系統 (3D Character & Local Asset Cache Overhaul)**：
+  - **本地快取機制 (Local Assets Cache)**：在 `CatAppearance.lua` 與 `EquipmentAppearance.lua` 中加入本地資產快取檢查，優先在 `ReplicatedStorage.Assets` 或 `ReplicatedStorage` 根目錄中尋找與配件同名的本地物件實體。**一旦存在便直接克隆穿戴，從而完美繞過本地 Studio 開發時 InsertService:LoadAsset 權限不足 (HTTP 403) 導致的不顯示痛點。**
+  - **重構自動轉換為直接克隆 (Direct Clone)**：取消先前的手動 `SpecialMesh` 拷貝邏輯，改為直接 `Clone` 來源資產中的 `MeshPart` 或 `SpecialMesh` 並重新命名為 `Handle` 進行配件裝載。此舉能完整保留 3D 模型原始的 `Size`、顏色、材質及 PBR 模型貼圖元件 (`SurfaceAppearance`)，免去尺寸縮水的 Bug。
+  - **透明度安全防禦**：如果因任何緣故未能成功套用任何客製 3D 配件，系統會強制將標準身體透明度設回 `0`，防止角色在加載失敗時呈現半透明狀態。
+- **版本號更新**：升級至 `v0.5.0`。
 
 ### 2026-05-25（v0.4.7）
 - **自定義 3D 模型與裝備載入修復 (Custom 3D Model & Equipment Fix)**：
