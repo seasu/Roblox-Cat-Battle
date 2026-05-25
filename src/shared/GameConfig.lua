@@ -1,6 +1,6 @@
 local GameConfig = {}
 
-GameConfig.VERSION = "v0.5.0"
+GameConfig.VERSION = "v0.5.1"
 
 GameConfig.MAX_LEVEL = 100
 GameConfig.BASE_XP = 80
